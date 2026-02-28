@@ -2,6 +2,8 @@ use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use colonization_sav::{HillsRiver, SaveFile, TerrainType};
 
+mod tui;
+
 const NATION_NAMES: [&str; 4] = ["England", "France", "Spain", "Netherlands"];
 
 #[derive(Parser)]
@@ -30,6 +32,10 @@ enum Commands {
         file: String,
     },
     DumpMap {
+        #[arg(short, long)]
+        file: String,
+    },
+    Tui {
         #[arg(short, long)]
         file: String,
     },
@@ -129,6 +135,10 @@ fn main() -> Result<()> {
                 }
                 println!("{line}");
             }
+        }
+        Commands::Tui { file } => {
+            let save = SaveFile::from_path(&file)?;
+            tui::run(save, file)?;
         }
         Commands::Edit {
             file,
