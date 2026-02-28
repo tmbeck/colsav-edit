@@ -1,0 +1,9 @@
+[package]
+name = "colonization-sav"
+version = "0.1.0"
+edition = "2024"
+description = "Parser and editor for Sid Meier's Colonization (1994) SAV files"
+license = "Unlicense"
+
+[dependencies]
+thiserror = "2"
