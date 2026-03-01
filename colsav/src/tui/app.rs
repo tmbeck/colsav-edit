@@ -1,9 +1,9 @@
 use anyhow::Result;
 use colonization_sav::SaveFile;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::{Alignment, Constraint, Layout};
 use ratatui::prelude::*;
-use ratatui::widgets::{Block, Paragraph, TableState, Tabs};
+use ratatui::widgets::{Block, Clear, Paragraph, TableState, Tabs};
 
 use super::colonies_tab;
 use super::header_tab;
@@ -11,6 +11,8 @@ use super::map_tab;
 use super::nations_tab;
 use super::tabs::Tab;
 use super::theme;
+use super::trade_routes_tab;
+use super::tribes_tab;
 use super::units_tab;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,8 +33,11 @@ pub struct App {
     pub should_quit: bool,
     pub active_tab: Tab,
     pub input_mode: InputMode,
+    pub show_help: bool,
     pub colony_table_state: TableState,
     pub unit_table_state: TableState,
+    pub trade_route_table_state: TableState,
+    pub tribe_table_state: TableState,
     pub nation_selected: usize,
     pub map_scroll: (u16, u16),
     pub edit_field: Option<EditField>,
@@ -55,14 +60,31 @@ impl App {
             unit_table_state.select(Some(0));
         }
 
+        let mut trade_route_table_state = TableState::default();
+        if save
+            .trade_routes
+            .iter()
+            .any(|route| !route.name().is_empty())
+        {
+            trade_route_table_state.select(Some(0));
+        }
+
+        let mut tribe_table_state = TableState::default();
+        if !save.tribes.is_empty() {
+            tribe_table_state.select(Some(0));
+        }
+
         Self {
             save,
             file_path: path,
             should_quit: false,
             active_tab: Tab::Header,
             input_mode: InputMode::Normal,
+            show_help: false,
             colony_table_state,
             unit_table_state,
+            trade_route_table_state,
+            tribe_table_state,
             nation_selected: 0,
             map_scroll: (0, 0),
             edit_field: None,
@@ -98,10 +120,23 @@ impl App {
         match self.active_tab {
             Tab::Header => header_tab::render(frame, chunks[1], &self.save),
             Tab::Colonies => {
-                colonies_tab::render(frame, chunks[1], &self.save, &mut self.colony_table_state)
+                colonies_tab::render(frame, chunks[1], &self.save, &mut self.colony_table_state);
             }
-            Tab::Units => units_tab::render(frame, chunks[1], &self.save, &mut self.unit_table_state),
+            Tab::Units => {
+                units_tab::render(frame, chunks[1], &self.save, &mut self.unit_table_state);
+            }
             Tab::Nations => nations_tab::render(frame, chunks[1], self),
+            Tab::TradeRoutes => {
+                trade_routes_tab::render(
+                    frame,
+                    chunks[1],
+                    &self.save,
+                    &mut self.trade_route_table_state,
+                );
+            }
+            Tab::Tribes => {
+                tribes_tab::render(frame, chunks[1], &self.save, &mut self.tribe_table_state);
+            }
             Tab::Map => map_tab::render(frame, chunks[1], &self.save, self.map_scroll),
         }
 
@@ -111,19 +146,32 @@ impl App {
             InputMode::Editing => "EDIT",
         };
         let status = format!(
-            "{} | {} | {} | {} | Tab/Shift+Tab Switch | 1-5 Tabs | e Edit | s/Ctrl+S Save | q Quit",
+            "{} | {} | {} | {} | Tab/Shift+Tab Switch | 1-7 Tabs | e Edit | s/Ctrl+S Save | ? Help | q Quit",
             self.file_path, dirty_mark, mode, self.status_message
         );
         let status_bar = Paragraph::new(status).style(theme::status());
         frame.render_widget(status_bar, chunks[2]);
 
+        if self.show_help {
+            let popup_area = centered_rect(72, 46, area);
+            let help_text = Paragraph::new(help_text())
+                .style(theme::base())
+                .alignment(Alignment::Left)
+                .block(
+                    Block::bordered()
+                        .title(" Help ")
+                        .border_style(theme::border()),
+                );
+            frame.render_widget(Clear, popup_area);
+            frame.render_widget(help_text, popup_area);
+        }
+
         if matches!(self.active_tab, Tab::Nations)
             && matches!(self.input_mode, InputMode::Editing)
             && self.edit_field.is_some()
+            && let Some((x, y)) = nations_tab::edit_cursor_position(chunks[1], self)
         {
-            if let Some((x, y)) = nations_tab::edit_cursor_position(chunks[1], self) {
-                frame.set_cursor_position((x, y));
-            }
+            frame.set_cursor_position((x, y));
         }
     }
 
@@ -134,13 +182,24 @@ impl App {
             }
             match self.input_mode {
                 InputMode::Normal => self.handle_key_normal(key)?,
-                InputMode::Editing => self.handle_key_editing(key)?,
+                InputMode::Editing => self.handle_key_editing(key),
             }
         }
         Ok(self.should_quit)
     }
 
     fn handle_key_normal(&mut self, key: KeyEvent) -> Result<()> {
+        if self.show_help {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('?') => {
+                    self.show_help = false;
+                    self.status_message = "Closed help".to_string();
+                }
+                _ => {}
+            }
+            return Ok(());
+        }
+
         match key.code {
             KeyCode::Tab => self.active_tab = self.active_tab.next(),
             KeyCode::BackTab => self.active_tab = self.active_tab.prev(),
@@ -148,9 +207,18 @@ impl App {
             KeyCode::Char('2') | KeyCode::F(2) => self.active_tab = Tab::Colonies,
             KeyCode::Char('3') | KeyCode::F(3) => self.active_tab = Tab::Units,
             KeyCode::Char('4') | KeyCode::F(4) => self.active_tab = Tab::Nations,
-            KeyCode::Char('5') | KeyCode::F(5) => self.active_tab = Tab::Map,
+            KeyCode::Char('5') | KeyCode::F(5) => self.active_tab = Tab::TradeRoutes,
+            KeyCode::Char('6') | KeyCode::F(6) => self.active_tab = Tab::Tribes,
+            KeyCode::Char('7') | KeyCode::F(7) => self.active_tab = Tab::Map,
+            KeyCode::Char('?') => {
+                self.show_help = true;
+                self.pending_quit_confirm = false;
+                self.status_message = "Showing help (? or Esc to close)".to_string();
+            }
             KeyCode::Esc | KeyCode::Char('q') => self.request_quit(),
-            KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => self.save_file()?,
+            KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.save_file()?;
+            }
             KeyCode::Char('s') => self.save_file()?,
             KeyCode::Char('e') => self.start_edit(),
             KeyCode::Up | KeyCode::Char('k') => self.navigate_up(),
@@ -163,7 +231,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_key_editing(&mut self, key: KeyEvent) -> Result<()> {
+    fn handle_key_editing(&mut self, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
                 self.input_mode = InputMode::Normal;
@@ -182,7 +250,6 @@ impl App {
             }
             _ => {}
         }
-        Ok(())
     }
 
     fn request_quit(&mut self) {
@@ -205,8 +272,15 @@ impl App {
     fn navigate_up(&mut self) {
         self.pending_quit_confirm = false;
         match self.active_tab {
-            Tab::Colonies => move_selection_up(&mut self.colony_table_state, self.save.colonies.len()),
+            Tab::Colonies => {
+                move_selection_up(&mut self.colony_table_state, self.save.colonies.len());
+            }
             Tab::Units => move_selection_up(&mut self.unit_table_state, self.save.units.len()),
+            Tab::TradeRoutes => {
+                let route_len = self.named_trade_routes_len();
+                move_selection_up(&mut self.trade_route_table_state, route_len);
+            }
+            Tab::Tribes => move_selection_up(&mut self.tribe_table_state, self.save.tribes.len()),
             Tab::Nations => {
                 if self.nation_field_selected > 0 {
                     self.nation_field_selected -= 1;
@@ -225,8 +299,15 @@ impl App {
     fn navigate_down(&mut self) {
         self.pending_quit_confirm = false;
         match self.active_tab {
-            Tab::Colonies => move_selection_down(&mut self.colony_table_state, self.save.colonies.len()),
+            Tab::Colonies => {
+                move_selection_down(&mut self.colony_table_state, self.save.colonies.len());
+            }
             Tab::Units => move_selection_down(&mut self.unit_table_state, self.save.units.len()),
+            Tab::TradeRoutes => {
+                let route_len = self.named_trade_routes_len();
+                move_selection_down(&mut self.trade_route_table_state, route_len);
+            }
+            Tab::Tribes => move_selection_down(&mut self.tribe_table_state, self.save.tribes.len()),
             Tab::Nations => {
                 if self.nation_field_selected < 1 {
                     self.nation_field_selected += 1;
@@ -262,7 +343,7 @@ impl App {
         self.pending_quit_confirm = false;
         match self.active_tab {
             Tab::Nations => {
-                if self.nation_selected % 2 == 0 {
+                if self.nation_selected.is_multiple_of(2) {
                     self.nation_selected = usize::min(self.nation_selected + 1, 3);
                 }
             }
@@ -330,6 +411,46 @@ impl App {
         self.edit_field = None;
         self.edit_buffer.clear();
     }
+
+    fn named_trade_routes_len(&self) -> usize {
+        self.save
+            .trade_routes
+            .iter()
+            .filter(|route| !route.name().is_empty())
+            .count()
+    }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
+    let vertical = Layout::vertical([
+        Constraint::Percentage((100_u16.saturating_sub(percent_y)) / 2),
+        Constraint::Percentage(percent_y),
+        Constraint::Percentage((100_u16.saturating_sub(percent_y)) / 2),
+    ])
+    .split(area);
+
+    Layout::horizontal([
+        Constraint::Percentage((100_u16.saturating_sub(percent_x)) / 2),
+        Constraint::Percentage(percent_x),
+        Constraint::Percentage((100_u16.saturating_sub(percent_x)) / 2),
+    ])
+    .split(vertical[1])[1]
+}
+
+fn help_text() -> Text<'static> {
+    Text::from(vec![
+        Line::from(vec![Span::styled("Keybindings", theme::header())]),
+        Line::from(""),
+        Line::from("Tab / Shift-Tab : Switch tabs"),
+        Line::from("1-7             : Jump to tab"),
+        Line::from("e / Enter       : Edit field"),
+        Line::from("s / Ctrl+S      : Save"),
+        Line::from("Arrow keys/hjkl : Navigate"),
+        Line::from("q / Esc         : Quit"),
+        Line::from("?               : Toggle help"),
+        Line::from(""),
+        Line::from("Press ? or Esc to close this popup."),
+    ])
 }
 
 fn move_selection_up(state: &mut TableState, len: usize) {

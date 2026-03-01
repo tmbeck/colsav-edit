@@ -26,8 +26,7 @@ pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile, scroll: (u16, u16)
     }
 
     lines.push(Line::from(format!(
-        "Viewport row {} col {} (map {}x{})",
-        row_offset, col_offset, max_rows, max_cols
+        "Viewport row {row_offset} col {col_offset} (map {max_rows}x{max_cols})"
     )));
 
     let paragraph = Paragraph::new(Text::from(lines)).block(
@@ -65,9 +64,8 @@ fn terrain_char(tile: u8) -> char {
     let terrain_raw = (tile >> 3) & 0x1F;
     let hills_river_raw = tile & 0x07;
 
-    let terrain = match TerrainType::try_from(terrain_raw) {
-        Ok(v) => v,
-        Err(_) => return '?',
+    let Ok(terrain) = TerrainType::try_from(terrain_raw) else {
+        return '?';
     };
 
     if matches!(terrain, TerrainType::Ocean | TerrainType::SeaLane) {
@@ -91,12 +89,17 @@ fn tile_style(tile: u8) -> Style {
     if matches!(hills, Some(HillsRiver::Mountains)) {
         return Style::default().fg(Color::Gray).bg(theme::BG);
     }
-    if matches!(hills, Some(HillsRiver::River | HillsRiver::MajorRiver | HillsRiver::RiverHills)) {
+    if matches!(
+        hills,
+        Some(HillsRiver::River | HillsRiver::MajorRiver | HillsRiver::RiverHills)
+    ) {
         return Style::default().fg(Color::Blue).bg(theme::BG);
     }
 
     match terrain {
-        Some(TerrainType::Ocean | TerrainType::SeaLane) => Style::default().fg(Color::Blue).bg(theme::BG),
+        Some(TerrainType::Ocean | TerrainType::SeaLane) => {
+            Style::default().fg(Color::Blue).bg(theme::BG)
+        }
         Some(TerrainType::Arctic) => Style::default().fg(Color::White).bg(theme::BG),
         Some(TerrainType::Tundra | TerrainType::TundraForest | TerrainType::TundraForestW) => {
             Style::default().fg(Color::LightBlue).bg(theme::BG)
@@ -104,9 +107,12 @@ fn tile_style(tile: u8) -> Style {
         Some(TerrainType::Desert | TerrainType::DesertForest | TerrainType::DesertForestW) => {
             Style::default().fg(Color::Yellow).bg(theme::BG)
         }
-        Some(TerrainType::Plains | TerrainType::Prairie | TerrainType::Grassland | TerrainType::Savannah) => {
-            Style::default().fg(Color::LightYellow).bg(theme::BG)
-        }
+        Some(
+            TerrainType::Plains
+            | TerrainType::Prairie
+            | TerrainType::Grassland
+            | TerrainType::Savannah,
+        ) => Style::default().fg(Color::LightYellow).bg(theme::BG),
         Some(
             TerrainType::Marsh
             | TerrainType::Swamp

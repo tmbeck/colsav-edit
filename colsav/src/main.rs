@@ -80,9 +80,8 @@ fn terrain_char(tile: u8) -> char {
     let terrain_raw = (tile >> 3) & 0x1F;
     let hills_river_raw = tile & 0x07;
 
-    let terrain = match TerrainType::try_from(terrain_raw) {
-        Ok(v) => v,
-        Err(_) => return '?',
+    let Ok(terrain) = TerrainType::try_from(terrain_raw) else {
+        return '?';
     };
 
     if matches!(terrain, TerrainType::Ocean | TerrainType::SeaLane) {
@@ -109,13 +108,13 @@ fn main() -> Result<()> {
             let save = SaveFile::from_path(file)?;
             for (idx, unit) in save.units.iter().enumerate() {
                 println!("Unit {}:", idx + 1);
-                println!("{}", unit);
+                println!("{unit}");
             }
         }
         Commands::DumpColonies { file } => {
             let save = SaveFile::from_path(file)?;
             for colony in &save.colonies {
-                println!("{}", colony);
+                println!("{colony}");
             }
         }
         Commands::DumpNations { file } => {
@@ -123,7 +122,7 @@ fn main() -> Result<()> {
             for (idx, nation) in save.nations.iter().enumerate() {
                 let name = NATION_NAMES.get(idx).copied().unwrap_or("Unknown");
                 println!("Nation: {name}");
-                println!("{}", nation);
+                println!("{nation}");
             }
         }
         Commands::DumpMap { file } => {

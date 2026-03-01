@@ -8,6 +8,8 @@ pub mod map_tab;
 pub mod nations_tab;
 pub mod tabs;
 pub mod theme;
+pub mod trade_routes_tab;
+pub mod tribes_tab;
 pub mod units_tab;
 
 pub use app::App;

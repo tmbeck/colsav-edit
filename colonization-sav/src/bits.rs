@@ -115,10 +115,10 @@ mod tests {
             w.write_bits(3, 0b000); // docks = none
             w.write_bits(3, 0b001); // town_hall = level 1
             w.write_bits(3, 0b000); // schoolhouse = none
-            w.write_bool(true);     // warehouse
-            w.write_bool(false);    // unused
-            w.write_bool(false);    // stables
-            w.write_bool(true);     // custom_house
+            w.write_bool(true); // warehouse
+            w.write_bool(false); // unused
+            w.write_bool(false); // stables
+            w.write_bool(true); // custom_house
             w.write_bits(2, 0b01); // printing_press = level 1
             w.write_bits(3, 0b001); // weavers_house = level 1
             w.write_bits(3, 0b000); // tobacconists
@@ -128,7 +128,7 @@ mod tests {
             w.write_bits(2, 0b01); // carpenters = level 1
             w.write_bits(2, 0b00); // church
             w.write_bits(3, 0b000); // blacksmiths
-            w.write_bits(6, 0);    // unused
+            w.write_bits(6, 0); // unused
         }
 
         // Read it back
@@ -138,11 +138,11 @@ mod tests {
         assert_eq!(r.read_bits(3), 0b000); // docks
         assert_eq!(r.read_bits(3), 0b001); // town_hall
         assert_eq!(r.read_bits(3), 0b000); // schoolhouse
-        assert!(r.read_bool());             // warehouse
-        assert!(!r.read_bool());            // unused
-        assert!(!r.read_bool());            // stables
-        assert!(r.read_bool());             // custom_house
-        assert_eq!(r.read_bits(2), 0b01);  // printing_press
+        assert!(r.read_bool()); // warehouse
+        assert!(!r.read_bool()); // unused
+        assert!(!r.read_bool()); // stables
+        assert!(r.read_bool()); // custom_house
+        assert_eq!(r.read_bits(2), 0b01); // printing_press
         assert_eq!(r.read_bits(3), 0b001); // weavers
     }
 
@@ -152,10 +152,10 @@ mod tests {
         {
             let mut w = BitWriter::new(&mut buf);
             w.write_bits(4, 0b0011); // nation_id = Netherlands
-            w.write_bool(true);       // vis English
-            w.write_bool(false);      // vis French
-            w.write_bool(true);       // vis Spanish
-            w.write_bool(false);      // vis Dutch
+            w.write_bool(true); // vis English
+            w.write_bool(false); // vis French
+            w.write_bool(true); // vis Spanish
+            w.write_bool(false); // vis Dutch
         }
         let mut r = BitReader::new(&buf);
         assert_eq!(r.read_bits(4), 0b0011);

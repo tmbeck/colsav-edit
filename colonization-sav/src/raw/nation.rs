@@ -1,6 +1,6 @@
 use crate::bits::{BitReader, BitWriter};
-use crate::goods::Goods16;
 use crate::error::Result;
+use crate::goods::Goods16;
 
 /// NATION section. 4 entries (European powers only).
 /// Each nation record is variable but follows a fixed layout.
@@ -10,8 +10,8 @@ use crate::error::Result;
 /// 1 + 1 + 3 + 1 + 1 + 4(founding_fathers) + 1 + 2 + 2 + 2 + 2 + 2 + 2 + 1 + 1 + 4 + 2 + 2
 /// + 2 + 4 + 4 + 4 + 2 + 2 + 2 + 4×1(relations_nations) + 8×1(relations_indian)
 /// + 4 + 2 + 6 + trade(16 + 32 + 64 + 64 + 64) = ... complicated.
+///
 /// We'll just parse field by field and track the total.
-
 pub const NATION_COUNT: usize = 4;
 
 /// Founding fathers bitfield (25 individual + 7 unused = 32 bits = 4 bytes).
@@ -42,7 +42,7 @@ pub struct FoundingFathers {
     pub jean_de_brebeuf: bool,
     pub juan_de_sepulveda: bool,
     pub bartolme_de_las_casas: bool,
-    pub unused_bits: u8,             // 7 bits (preserved for round-trip)
+    pub unused_bits: u8, // 7 bits (preserved for round-trip)
 }
 
 impl FoundingFathers {
@@ -140,16 +140,16 @@ impl Relation {
 /// Trade data for a nation.
 #[derive(Debug, Clone)]
 pub struct NationTrade {
-    pub euro_price: Goods16<u8>,           // 16 × u8
-    pub intrinsic_volume: Goods16<i16>,    // 16 × i16
-    pub gold: Goods16<i32>,               // 16 × i32
-    pub tons_traded: Goods16<i32>,        // 16 × i32
-    pub tons_traded2: Goods16<i32>,       // 16 × i32
+    pub euro_price: Goods16<u8>,        // 16 × u8
+    pub intrinsic_volume: Goods16<i16>, // 16 × i16
+    pub gold: Goods16<i32>,             // 16 × i32
+    pub tons_traded: Goods16<i32>,      // 16 × i32
+    pub tons_traded2: Goods16<i32>,     // 16 × i32
 }
 
 impl NationTrade {
     pub fn byte_size() -> usize {
-        16 + 32 + 64 + 64 + 64  // = 240
+        16 + 32 + 64 + 64 + 64 // = 240
     }
 
     pub fn read(data: &[u8]) -> Self {
@@ -165,7 +165,13 @@ impl NationTrade {
         let tons_traded2 = Goods16::<i32>::read_le(&data[pos..]);
         let _ = pos + 64;
 
-        Self { euro_price, intrinsic_volume, gold, tons_traded, tons_traded2 }
+        Self {
+            euro_price,
+            intrinsic_volume,
+            gold,
+            tons_traded,
+            tons_traded2,
+        }
     }
 
     pub fn write(&self, buf: &mut [u8]) {
@@ -186,7 +192,7 @@ impl NationTrade {
 pub struct Nation {
     pub unknown19: u8,
     pub tax_rate: u8,
-    pub recruit: [u8; 3],          // 3 × profession_type
+    pub recruit: [u8; 3], // 3 × profession_type
     pub unused07: u8,
     pub recruit_count: u8,
     pub founding_fathers: FoundingFathers, // 4 bytes
@@ -201,7 +207,7 @@ pub struct Nation {
     pub rebel_sentiment: i8,
     pub unknown23: [u8; 4],
     pub artillery_bought_count: u16,
-    pub boycott_bitmap: Goods16<bool>,  // 16-bit bitmap
+    pub boycott_bitmap: Goods16<bool>, // 16-bit bitmap
     pub royal_money: i32,
     pub unknown24b: [u8; 4],
     pub gold: i32,
@@ -229,20 +235,25 @@ impl Nation {
     pub fn read(data: &[u8]) -> Result<Self> {
         let mut pos = 0;
 
-        let unknown19 = data[pos]; pos += 1;
-        let tax_rate = data[pos]; pos += 1;
+        let unknown19 = data[pos];
+        pos += 1;
+        let tax_rate = data[pos];
+        pos += 1;
 
         let mut recruit = [0u8; 3];
         recruit.copy_from_slice(&data[pos..pos + 3]);
         pos += 3;
 
-        let unused07 = data[pos]; pos += 1;
-        let recruit_count = data[pos]; pos += 1;
+        let unused07 = data[pos];
+        pos += 1;
+        let recruit_count = data[pos];
+        pos += 1;
 
         let founding_fathers = FoundingFathers::read(&data[pos..]);
         pos += 4;
 
-        let unknown21 = data[pos]; pos += 1;
+        let unknown21 = data[pos];
+        pos += 1;
 
         let liberty_bells_total = i16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
@@ -262,8 +273,10 @@ impl Nation {
         prob_founding_father_count_end.copy_from_slice(&data[pos..pos + 2]);
         pos += 2;
 
-        let villages_burned = data[pos]; pos += 1;
-        let rebel_sentiment = data[pos] as i8; pos += 1;
+        let villages_burned = data[pos];
+        pos += 1;
+        let rebel_sentiment = data[pos] as i8;
+        pos += 1;
 
         let mut unknown23 = [0u8; 4];
         unknown23.copy_from_slice(&data[pos..pos + 4]);
@@ -275,18 +288,15 @@ impl Nation {
         let boycott_bitmap = Goods16::<bool>::read_bitmap_le(&data[pos..]);
         pos += 2;
 
-        let royal_money = i32::from_le_bytes([
-            data[pos], data[pos + 1], data[pos + 2], data[pos + 3],
-        ]);
+        let royal_money =
+            i32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]);
         pos += 4;
 
         let mut unknown24b = [0u8; 4];
         unknown24b.copy_from_slice(&data[pos..pos + 4]);
         pos += 4;
 
-        let gold = i32::from_le_bytes([
-            data[pos], data[pos + 1], data[pos + 2], data[pos + 3],
-        ]);
+        let gold = i32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]);
         pos += 4;
 
         let current_crosses = u16::from_le_bytes([data[pos], data[pos + 1]]);
@@ -325,15 +335,35 @@ impl Nation {
         let trade = NationTrade::read(&data[pos..]);
 
         Ok(Nation {
-            unknown19, tax_rate, recruit, unused07, recruit_count,
-            founding_fathers, unknown21, liberty_bells_total,
-            liberty_bells_last_turn, unknown22, next_founding_father,
-            founding_father_count, prob_founding_father_count_end,
-            villages_burned, rebel_sentiment, unknown23,
-            artillery_bought_count, boycott_bitmap, royal_money,
-            unknown24b, gold, current_crosses, needed_crosses,
-            point_return_from_europe, relation_by_nations,
-            relation_by_indian, unknown26a, unknown26b, unknown26c,
+            unknown19,
+            tax_rate,
+            recruit,
+            unused07,
+            recruit_count,
+            founding_fathers,
+            unknown21,
+            liberty_bells_total,
+            liberty_bells_last_turn,
+            unknown22,
+            next_founding_father,
+            founding_father_count,
+            prob_founding_father_count_end,
+            villages_burned,
+            rebel_sentiment,
+            unknown23,
+            artillery_bought_count,
+            boycott_bitmap,
+            royal_money,
+            unknown24b,
+            gold,
+            current_crosses,
+            needed_crosses,
+            point_return_from_europe,
+            relation_by_nations,
+            relation_by_indian,
+            unknown26a,
+            unknown26b,
+            unknown26c,
             trade,
         })
     }
@@ -342,17 +372,22 @@ impl Nation {
         let mut buf = vec![0u8; Self::byte_size()];
         let mut pos = 0;
 
-        buf[pos] = self.unknown19; pos += 1;
-        buf[pos] = self.tax_rate; pos += 1;
+        buf[pos] = self.unknown19;
+        pos += 1;
+        buf[pos] = self.tax_rate;
+        pos += 1;
         buf[pos..pos + 3].copy_from_slice(&self.recruit);
         pos += 3;
-        buf[pos] = self.unused07; pos += 1;
-        buf[pos] = self.recruit_count; pos += 1;
+        buf[pos] = self.unused07;
+        pos += 1;
+        buf[pos] = self.recruit_count;
+        pos += 1;
 
         self.founding_fathers.write(&mut buf[pos..]);
         pos += 4;
 
-        buf[pos] = self.unknown21; pos += 1;
+        buf[pos] = self.unknown21;
+        pos += 1;
         buf[pos..pos + 2].copy_from_slice(&self.liberty_bells_total.to_le_bytes());
         pos += 2;
         buf[pos..pos + 2].copy_from_slice(&self.liberty_bells_last_turn.to_le_bytes());
@@ -365,8 +400,10 @@ impl Nation {
         pos += 2;
         buf[pos..pos + 2].copy_from_slice(&self.prob_founding_father_count_end);
         pos += 2;
-        buf[pos] = self.villages_burned; pos += 1;
-        buf[pos] = self.rebel_sentiment as u8; pos += 1;
+        buf[pos] = self.villages_burned;
+        pos += 1;
+        buf[pos] = self.rebel_sentiment as u8;
+        pos += 1;
         buf[pos..pos + 4].copy_from_slice(&self.unknown23);
         pos += 4;
         buf[pos..pos + 2].copy_from_slice(&self.artillery_bought_count.to_le_bytes());
@@ -405,5 +442,102 @@ impl Nation {
         self.trade.write(&mut buf[pos..]);
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_founding_fathers_round_trip() {
+        let fathers = FoundingFathers {
+            adam_smith: true,
+            jakob_fugger: false,
+            peter_minuit: true,
+            peter_stuyvesant: false,
+            jan_de_witt: true,
+            ferdinand_magellan: true,
+            francisco_coronado: false,
+            hernando_de_soto: true,
+            henry_hudson: false,
+            sieur_de_la_salle: true,
+            hernan_cortes: false,
+            george_washington: true,
+            paul_revere: false,
+            francis_drake: true,
+            john_paul_jones: false,
+            thomas_jefferson: true,
+            pocahontas: true,
+            thomas_paine: false,
+            simon_bolivar: true,
+            benjamin_franklin: false,
+            william_brewster: true,
+            william_penn: false,
+            jean_de_brebeuf: true,
+            juan_de_sepulveda: false,
+            bartolme_de_las_casas: true,
+            unused_bits: 0,
+        };
+
+        let mut buf = [0u8; 4];
+        fathers.write(&mut buf);
+        let parsed = FoundingFathers::read(&buf);
+
+        assert_eq!(parsed.adam_smith, fathers.adam_smith);
+        assert_eq!(parsed.jakob_fugger, fathers.jakob_fugger);
+        assert_eq!(parsed.peter_minuit, fathers.peter_minuit);
+        assert_eq!(parsed.peter_stuyvesant, fathers.peter_stuyvesant);
+        assert_eq!(parsed.jan_de_witt, fathers.jan_de_witt);
+        assert_eq!(parsed.ferdinand_magellan, fathers.ferdinand_magellan);
+        assert_eq!(parsed.francisco_coronado, fathers.francisco_coronado);
+        assert_eq!(parsed.hernando_de_soto, fathers.hernando_de_soto);
+        assert_eq!(parsed.henry_hudson, fathers.henry_hudson);
+        assert_eq!(parsed.sieur_de_la_salle, fathers.sieur_de_la_salle);
+        assert_eq!(parsed.hernan_cortes, fathers.hernan_cortes);
+        assert_eq!(parsed.george_washington, fathers.george_washington);
+        assert_eq!(parsed.paul_revere, fathers.paul_revere);
+        assert_eq!(parsed.francis_drake, fathers.francis_drake);
+        assert_eq!(parsed.john_paul_jones, fathers.john_paul_jones);
+        assert_eq!(parsed.thomas_jefferson, fathers.thomas_jefferson);
+        assert_eq!(parsed.pocahontas, fathers.pocahontas);
+        assert_eq!(parsed.thomas_paine, fathers.thomas_paine);
+        assert_eq!(parsed.simon_bolivar, fathers.simon_bolivar);
+        assert_eq!(parsed.benjamin_franklin, fathers.benjamin_franklin);
+        assert_eq!(parsed.william_brewster, fathers.william_brewster);
+        assert_eq!(parsed.william_penn, fathers.william_penn);
+        assert_eq!(parsed.jean_de_brebeuf, fathers.jean_de_brebeuf);
+        assert_eq!(parsed.juan_de_sepulveda, fathers.juan_de_sepulveda);
+        assert_eq!(parsed.bartolme_de_las_casas, fathers.bartolme_de_las_casas);
+    }
+
+    #[test]
+    fn test_founding_fathers_preserves_unused() {
+        let fathers = FoundingFathers {
+            unused_bits: 0b1100110,
+            ..FoundingFathers::default()
+        };
+
+        let mut buf = [0u8; 4];
+        fathers.write(&mut buf);
+        let parsed = FoundingFathers::read(&buf);
+
+        assert_eq!(parsed.unused_bits, 0b1100110);
+    }
+
+    #[test]
+    fn test_relation_round_trip() {
+        let rel = Relation {
+            attitude: 5,
+            status: 3,
+            irritated_or_unused: true,
+        };
+
+        let b = rel.write_byte();
+        let parsed = Relation::read_byte(b);
+
+        assert_eq!(parsed.attitude, 5);
+        assert_eq!(parsed.status, 3);
+        assert!(parsed.irritated_or_unused);
     }
 }

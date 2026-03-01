@@ -27,7 +27,11 @@ impl MapLayer {
         let size = rows * cols;
         let mut map_data = vec![0u8; size];
         map_data.copy_from_slice(&data[..size]);
-        Ok(Self { rows, cols, data: map_data })
+        Ok(Self {
+            rows,
+            cols,
+            data: map_data,
+        })
     }
 
     pub fn write(&self) -> Vec<u8> {
@@ -55,15 +59,15 @@ pub type SeenMap = MapLayer;
 /// Each byte = 8 directional connectivity bits.
 #[derive(Debug, Clone)]
 pub struct Connectivity {
-    pub sea_lane: Vec<u8>,      // 18 × 15 = 270 bytes
-    pub land: Vec<u8>,          // 18 × 15 = 270 bytes
+    pub sea_lane: Vec<u8>, // 18 × 15 = 270 bytes
+    pub land: Vec<u8>,     // 18 × 15 = 270 bytes
 }
 
 impl Connectivity {
     pub const ROWS: usize = 18;
     pub const COLS: usize = 15;
     pub const SECTION_SIZE: usize = Self::ROWS * Self::COLS; // 270
-    pub const TOTAL_SIZE: usize = Self::SECTION_SIZE * 2;    // 540
+    pub const TOTAL_SIZE: usize = Self::SECTION_SIZE * 2; // 540
 
     pub fn read(data: &[u8]) -> Result<Self> {
         let mut sea_lane = vec![0u8; Self::SECTION_SIZE];
@@ -80,5 +84,38 @@ impl Connectivity {
         buf.extend_from_slice(&self.sea_lane);
         buf.extend_from_slice(&self.land);
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_map_layer_get_set() {
+        let mut layer = MapLayer::read(&[1, 2, 3, 4], 2, 2).expect("map read should succeed");
+
+        assert_eq!(layer.get(0, 0), 1);
+        assert_eq!(layer.get(1, 1), 4);
+
+        layer.set(1, 0, 9);
+        assert_eq!(layer.get(1, 0), 9);
+    }
+
+    #[test]
+    fn test_connectivity_round_trip() {
+        let sea_lane: Vec<u8> = (0..Connectivity::SECTION_SIZE)
+            .map(|i| u8::try_from(i % 251).expect("value should fit in u8"))
+            .collect();
+        let land: Vec<u8> = (0..Connectivity::SECTION_SIZE)
+            .map(|i| u8::try_from((i * 3) % 251).expect("value should fit in u8"))
+            .collect();
+
+        let conn = Connectivity { sea_lane, land };
+        let bytes = conn.write();
+        let parsed = Connectivity::read(&bytes).expect("connectivity parse should succeed");
+
+        assert_eq!(parsed.sea_lane, conn.sea_lane);
+        assert_eq!(parsed.land, conn.land);
     }
 }

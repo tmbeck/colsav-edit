@@ -25,7 +25,11 @@ impl Player {
 
     /// Get the country name as a string (up to first null).
     pub fn country_name(&self) -> &str {
-        let end = self.country_name_raw.iter().position(|&b| b == 0).unwrap_or(24);
+        let end = self
+            .country_name_raw
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(24);
         std::str::from_utf8(&self.country_name_raw[..end]).unwrap_or("")
     }
 
@@ -44,8 +48,10 @@ impl Player {
         let named_new_world = (player_flags_raw & 0x01) != 0;
         pos += 1;
 
-        let control = data[pos]; pos += 1;
-        let founded_colonies = data[pos]; pos += 1;
+        let control = data[pos];
+        pos += 1;
+        let founded_colonies = data[pos];
+        pos += 1;
         let diplomacy = data[pos];
 
         Ok(Player {
@@ -70,8 +76,10 @@ impl Player {
 
         buf[pos] = self.player_flags_raw;
         pos += 1;
-        buf[pos] = self.control; pos += 1;
-        buf[pos] = self.founded_colonies; pos += 1;
+        buf[pos] = self.control;
+        pos += 1;
+        buf[pos] = self.founded_colonies;
+        pos += 1;
         buf[pos] = self.diplomacy;
 
         buf
@@ -93,4 +101,55 @@ pub fn write_players(players: &[Player]) -> Vec<u8> {
         buf.extend_from_slice(&p.write());
     }
     buf
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_player_name() {
+        let mut name_raw = [0u8; 24];
+        name_raw[..8].copy_from_slice(b"De Soto\0");
+        let player = Player {
+            name_raw,
+            country_name_raw: [0u8; 24],
+            named_new_world: false,
+            player_flags_raw: 0,
+            control: 1,
+            founded_colonies: 0,
+            diplomacy: 0,
+        };
+
+        assert_eq!(player.name(), "De Soto");
+    }
+
+    #[test]
+    fn test_player_round_trip() {
+        let mut name_raw = [0u8; 24];
+        name_raw[..7].copy_from_slice(b"Isabel\0");
+        let mut country_name_raw = [0u8; 24];
+        country_name_raw[..6].copy_from_slice(b"Spain\0");
+
+        let player = Player {
+            name_raw,
+            country_name_raw,
+            named_new_world: true,
+            player_flags_raw: 0x01,
+            control: 0,
+            founded_colonies: 3,
+            diplomacy: 2,
+        };
+
+        let bytes = player.write();
+        let parsed = Player::read(&bytes).expect("player parse should succeed");
+
+        assert_eq!(parsed.name(), "Isabel");
+        assert_eq!(parsed.country_name(), "Spain");
+        assert!(parsed.named_new_world);
+        assert_eq!(parsed.player_flags_raw, 0x01);
+        assert_eq!(parsed.control, 0);
+        assert_eq!(parsed.founded_colonies, 3);
+        assert_eq!(parsed.diplomacy, 2);
+    }
 }

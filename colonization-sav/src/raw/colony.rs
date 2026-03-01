@@ -1,7 +1,7 @@
 use crate::bits::{BitReader, BitWriter};
 
-use crate::goods::Goods16;
 use crate::error::Result;
+use crate::goods::Goods16;
 
 /// COLONY section. Each colony = 202 bytes.
 pub const COLONY_SIZE: usize = 202;
@@ -10,18 +10,18 @@ pub const COLONY_SIZE: usize = 202;
 pub struct Colony {
     pub x: u8,
     pub y: u8,
-    pub name_raw: [u8; 24],           // 24 bytes raw (may contain embedded nulls)
-    pub nation_id: u8,            // nation_type
+    pub name_raw: [u8; 24], // 24 bytes raw (may contain embedded nulls)
+    pub nation_id: u8,      // nation_type
     pub unknown08a: u8,
-    pub colony_flags: u8,         // 8-bit bit_struct (preserve raw)
+    pub colony_flags: u8, // 8-bit bit_struct (preserve raw)
     pub unknown08b: [u8; 2],
     pub population: u8,
-    pub occupation: [u8; 32],     // occupation_type per colonist slot
-    pub profession: [u8; 32],     // profession_type per colonist slot
-    pub duration: [u8; 16],       // 16 bytes, each containing two 4-bit durations
-    pub tiles: [i8; 8],           // colonist index per adjacent tile (N,E,S,W,NW,NE,SE,SW)
+    pub occupation: [u8; 32], // occupation_type per colonist slot
+    pub profession: [u8; 32], // profession_type per colonist slot
+    pub duration: [u8; 16],   // 16 bytes, each containing two 4-bit durations
+    pub tiles: [i8; 8],       // colonist index per adjacent tile (N,E,S,W,NW,NE,SE,SW)
     pub unknown10: [u8; 12],
-    pub buildings: Buildings,     // 48-bit (6 bytes) bit_struct
+    pub buildings: Buildings,              // 48-bit (6 bytes) bit_struct
     pub custom_house_flags: Goods16<bool>, // 16-bit bitmap
     pub unknown11: [u8; 6],
     pub hammers: u16,
@@ -30,9 +30,9 @@ pub struct Colony {
     pub unknown12a: u8,
     pub depletion_counter: u8,
     pub hammers_purchased: u16,
-    pub stock: Goods16<i16>,      // 16 × i16
-    pub population_on_map: [u8; 4],     // per European nation
-    pub fortification_on_map: [u8; 4],  // per European nation
+    pub stock: Goods16<i16>,           // 16 × i16
+    pub population_on_map: [u8; 4],    // per European nation
+    pub fortification_on_map: [u8; 4], // per European nation
     pub rebel_dividend: i32,
     pub rebel_divisor: i32,
 }
@@ -121,18 +121,24 @@ impl Colony {
     pub fn read(data: &[u8]) -> Result<Self> {
         let mut pos = 0;
 
-        let x = data[pos]; pos += 1;
-        let y = data[pos]; pos += 1;
+        let x = data[pos];
+        pos += 1;
+        let y = data[pos];
+        pos += 1;
         let mut name_raw = [0u8; 24];
         name_raw.copy_from_slice(&data[pos..pos + 24]);
         pos += 24;
-        let nation_id = data[pos]; pos += 1;
-        let unknown08a = data[pos]; pos += 1;
-        let colony_flags = data[pos]; pos += 1;
+        let nation_id = data[pos];
+        pos += 1;
+        let unknown08a = data[pos];
+        pos += 1;
+        let colony_flags = data[pos];
+        pos += 1;
         let mut unknown08b = [0u8; 2];
         unknown08b.copy_from_slice(&data[pos..pos + 2]);
         pos += 2;
-        let population = data[pos]; pos += 1;
+        let population = data[pos];
+        pos += 1;
 
         let mut occupation = [0u8; 32];
         occupation.copy_from_slice(&data[pos..pos + 32]);
@@ -169,10 +175,14 @@ impl Colony {
         let hammers = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
 
-        let building_in_production = data[pos]; pos += 1;
-        let warehouse_level = data[pos]; pos += 1;
-        let unknown12a = data[pos]; pos += 1;
-        let depletion_counter = data[pos]; pos += 1;
+        let building_in_production = data[pos];
+        pos += 1;
+        let warehouse_level = data[pos];
+        pos += 1;
+        let unknown12a = data[pos];
+        pos += 1;
+        let depletion_counter = data[pos];
+        pos += 1;
 
         let hammers_purchased = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
@@ -188,24 +198,42 @@ impl Colony {
         fortification_on_map.copy_from_slice(&data[pos..pos + 4]);
         pos += 4;
 
-        let rebel_dividend = i32::from_le_bytes([
-            data[pos], data[pos + 1], data[pos + 2], data[pos + 3],
-        ]);
+        let rebel_dividend =
+            i32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]);
         pos += 4;
 
-        let rebel_divisor = i32::from_le_bytes([
-            data[pos], data[pos + 1], data[pos + 2], data[pos + 3],
-        ]);
+        let rebel_divisor =
+            i32::from_le_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]);
         let _ = pos + 4; // final pos
 
         Ok(Colony {
-            x, y, name_raw, nation_id, unknown08a, colony_flags, unknown08b,
-            population, occupation, profession, duration, tiles,
-            unknown10, buildings, custom_house_flags, unknown11,
-            hammers, building_in_production, warehouse_level,
-            unknown12a, depletion_counter, hammers_purchased,
-            stock, population_on_map, fortification_on_map,
-            rebel_dividend, rebel_divisor,
+            x,
+            y,
+            name_raw,
+            nation_id,
+            unknown08a,
+            colony_flags,
+            unknown08b,
+            population,
+            occupation,
+            profession,
+            duration,
+            tiles,
+            unknown10,
+            buildings,
+            custom_house_flags,
+            unknown11,
+            hammers,
+            building_in_production,
+            warehouse_level,
+            unknown12a,
+            depletion_counter,
+            hammers_purchased,
+            stock,
+            population_on_map,
+            fortification_on_map,
+            rebel_dividend,
+            rebel_divisor,
         })
     }
 
@@ -213,16 +241,22 @@ impl Colony {
         let mut buf = vec![0u8; COLONY_SIZE];
         let mut pos = 0;
 
-        buf[pos] = self.x; pos += 1;
-        buf[pos] = self.y; pos += 1;
+        buf[pos] = self.x;
+        pos += 1;
+        buf[pos] = self.y;
+        pos += 1;
         buf[pos..pos + 24].copy_from_slice(&self.name_raw);
         pos += 24;
-        buf[pos] = self.nation_id; pos += 1;
-        buf[pos] = self.unknown08a; pos += 1;
-        buf[pos] = self.colony_flags; pos += 1;
+        buf[pos] = self.nation_id;
+        pos += 1;
+        buf[pos] = self.unknown08a;
+        pos += 1;
+        buf[pos] = self.colony_flags;
+        pos += 1;
         buf[pos..pos + 2].copy_from_slice(&self.unknown08b);
         pos += 2;
-        buf[pos] = self.population; pos += 1;
+        buf[pos] = self.population;
+        pos += 1;
         buf[pos..pos + 32].copy_from_slice(&self.occupation);
         pos += 32;
         buf[pos..pos + 32].copy_from_slice(&self.profession);
@@ -243,10 +277,14 @@ impl Colony {
         pos += 6;
         buf[pos..pos + 2].copy_from_slice(&self.hammers.to_le_bytes());
         pos += 2;
-        buf[pos] = self.building_in_production; pos += 1;
-        buf[pos] = self.warehouse_level; pos += 1;
-        buf[pos] = self.unknown12a; pos += 1;
-        buf[pos] = self.depletion_counter; pos += 1;
+        buf[pos] = self.building_in_production;
+        pos += 1;
+        buf[pos] = self.warehouse_level;
+        pos += 1;
+        buf[pos] = self.unknown12a;
+        pos += 1;
+        buf[pos] = self.depletion_counter;
+        pos += 1;
         buf[pos..pos + 2].copy_from_slice(&self.hammers_purchased.to_le_bytes());
         pos += 2;
         self.stock.write_le(&mut buf[pos..]);
@@ -260,5 +298,118 @@ impl Colony {
         buf[pos..pos + 4].copy_from_slice(&self.rebel_divisor.to_le_bytes());
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_buildings_round_trip() {
+        let buildings = Buildings {
+            fortification: 3,
+            armory: 5,
+            docks: 2,
+            town_hall: 7,
+            schoolhouse: 1,
+            warehouse: true,
+            unused05a: false,
+            stables: true,
+            custom_house: false,
+            printing_press: 2,
+            weavers_house: 4,
+            tobacconists_house: 6,
+            rum_distillers_house: 1,
+            capitol_unused: 1,
+            fur_traders_house: 3,
+            carpenters_shop: 2,
+            church: 1,
+            blacksmiths_house: 5,
+            unused05b: 0b101010,
+        };
+
+        let mut buf = [0u8; 6];
+        buildings.write(&mut buf);
+        let parsed = Buildings::read(&buf);
+
+        assert_eq!(parsed.fortification, buildings.fortification);
+        assert_eq!(parsed.armory, buildings.armory);
+        assert_eq!(parsed.docks, buildings.docks);
+        assert_eq!(parsed.town_hall, buildings.town_hall);
+        assert_eq!(parsed.schoolhouse, buildings.schoolhouse);
+        assert_eq!(parsed.warehouse, buildings.warehouse);
+        assert_eq!(parsed.unused05a, buildings.unused05a);
+        assert_eq!(parsed.stables, buildings.stables);
+        assert_eq!(parsed.custom_house, buildings.custom_house);
+        assert_eq!(parsed.printing_press, buildings.printing_press);
+        assert_eq!(parsed.weavers_house, buildings.weavers_house);
+        assert_eq!(parsed.tobacconists_house, buildings.tobacconists_house);
+        assert_eq!(parsed.rum_distillers_house, buildings.rum_distillers_house);
+        assert_eq!(parsed.capitol_unused, buildings.capitol_unused);
+        assert_eq!(parsed.fur_traders_house, buildings.fur_traders_house);
+        assert_eq!(parsed.carpenters_shop, buildings.carpenters_shop);
+        assert_eq!(parsed.church, buildings.church);
+        assert_eq!(parsed.blacksmiths_house, buildings.blacksmiths_house);
+        assert_eq!(parsed.unused05b, buildings.unused05b);
+    }
+
+    #[test]
+    fn test_buildings_all_max() {
+        let buildings = Buildings {
+            fortification: 7,
+            armory: 7,
+            docks: 7,
+            town_hall: 7,
+            schoolhouse: 7,
+            warehouse: true,
+            unused05a: true,
+            stables: true,
+            custom_house: true,
+            printing_press: 3,
+            weavers_house: 7,
+            tobacconists_house: 7,
+            rum_distillers_house: 7,
+            capitol_unused: 3,
+            fur_traders_house: 7,
+            carpenters_shop: 3,
+            church: 3,
+            blacksmiths_house: 7,
+            unused05b: 0b11_1111,
+        };
+
+        let mut buf = [0u8; 6];
+        buildings.write(&mut buf);
+        let parsed = Buildings::read(&buf);
+
+        assert_eq!(parsed.fortification, 7);
+        assert_eq!(parsed.armory, 7);
+        assert_eq!(parsed.docks, 7);
+        assert_eq!(parsed.town_hall, 7);
+        assert_eq!(parsed.schoolhouse, 7);
+        assert!(parsed.warehouse);
+        assert!(parsed.unused05a);
+        assert!(parsed.stables);
+        assert!(parsed.custom_house);
+        assert_eq!(parsed.printing_press, 3);
+        assert_eq!(parsed.weavers_house, 7);
+        assert_eq!(parsed.tobacconists_house, 7);
+        assert_eq!(parsed.rum_distillers_house, 7);
+        assert_eq!(parsed.capitol_unused, 3);
+        assert_eq!(parsed.fur_traders_house, 7);
+        assert_eq!(parsed.carpenters_shop, 3);
+        assert_eq!(parsed.church, 3);
+        assert_eq!(parsed.blacksmiths_house, 7);
+        assert_eq!(parsed.unused05b, 0b11_1111);
+    }
+
+    #[test]
+    fn test_colony_name() {
+        let mut raw = [0u8; COLONY_SIZE];
+        raw[2..11].copy_from_slice(b"Jamestown");
+        raw[11] = 0;
+
+        let colony = Colony::read(&raw).expect("colony parse should succeed");
+        assert_eq!(colony.name(), "Jamestown");
     }
 }

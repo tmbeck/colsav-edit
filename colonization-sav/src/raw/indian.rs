@@ -1,6 +1,6 @@
 use crate::bits::{BitReader, BitWriter};
-use crate::goods::Goods16;
 use crate::error::Result;
+use crate::goods::Goods16;
 use crate::raw::nation::Relation;
 
 /// INDIAN section. Always 8 entries (one per Indian nation).
@@ -9,8 +9,8 @@ pub const INDIAN_COUNT: usize = 8;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TribeFlags {
-    pub unknown01: u8,          // 7 bits
-    pub extinct: bool,          // 1 bit
+    pub unknown01: u8, // 7 bits
+    pub extinct: bool, // 1 bit
 }
 
 impl TribeFlags {
@@ -35,15 +35,15 @@ impl TribeFlags {
 pub struct Indian {
     pub capitol_x: u8,
     pub capitol_y: u8,
-    pub tech: u8,               // tech_type
+    pub tech: u8, // tech_type
     pub tribe_flags: TribeFlags,
     pub unknown31b: [u8; 3],
-    pub muskets: u8,            // not including muskets equipped by braves
+    pub muskets: u8, // not including muskets equipped by braves
     pub horse_herds: u8,
     pub unknown31c: u8,
     pub horse_breeding: u16,
     pub unknown31d: [u8; 2],
-    pub stock: Goods16<i16>,    // 16 × i16 = 32 bytes
+    pub stock: Goods16<i16>, // 16 × i16 = 32 bytes
     pub unknown32: [u8; 12],
     pub relation_by_nations: [Relation; 4],
     pub zeros33: [u8; 8],
@@ -60,18 +60,25 @@ impl Indian {
     pub fn read(data: &[u8]) -> Result<Self> {
         let mut pos = 0;
 
-        let capitol_x = data[pos]; pos += 1;
-        let capitol_y = data[pos]; pos += 1;
-        let tech = data[pos]; pos += 1;
-        let tribe_flags = TribeFlags::read_byte(data[pos]); pos += 1;
+        let capitol_x = data[pos];
+        pos += 1;
+        let capitol_y = data[pos];
+        pos += 1;
+        let tech = data[pos];
+        pos += 1;
+        let tribe_flags = TribeFlags::read_byte(data[pos]);
+        pos += 1;
 
         let mut unknown31b = [0u8; 3];
         unknown31b.copy_from_slice(&data[pos..pos + 3]);
         pos += 3;
 
-        let muskets = data[pos]; pos += 1;
-        let horse_herds = data[pos]; pos += 1;
-        let unknown31c = data[pos]; pos += 1;
+        let muskets = data[pos];
+        pos += 1;
+        let horse_herds = data[pos];
+        pos += 1;
+        let unknown31c = data[pos];
+        pos += 1;
 
         let horse_breeding = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
@@ -104,10 +111,21 @@ impl Indian {
         }
 
         Ok(Indian {
-            capitol_x, capitol_y, tech, tribe_flags,
-            unknown31b, muskets, horse_herds, unknown31c,
-            horse_breeding, unknown31d, stock, unknown32,
-            relation_by_nations, zeros33, alarm_by_player,
+            capitol_x,
+            capitol_y,
+            tech,
+            tribe_flags,
+            unknown31b,
+            muskets,
+            horse_herds,
+            unknown31c,
+            horse_breeding,
+            unknown31d,
+            stock,
+            unknown32,
+            relation_by_nations,
+            zeros33,
+            alarm_by_player,
         })
     }
 
@@ -115,17 +133,24 @@ impl Indian {
         let mut buf = vec![0u8; Self::byte_size()];
         let mut pos = 0;
 
-        buf[pos] = self.capitol_x; pos += 1;
-        buf[pos] = self.capitol_y; pos += 1;
-        buf[pos] = self.tech; pos += 1;
-        buf[pos] = self.tribe_flags.write_byte(); pos += 1;
+        buf[pos] = self.capitol_x;
+        pos += 1;
+        buf[pos] = self.capitol_y;
+        pos += 1;
+        buf[pos] = self.tech;
+        pos += 1;
+        buf[pos] = self.tribe_flags.write_byte();
+        pos += 1;
 
         buf[pos..pos + 3].copy_from_slice(&self.unknown31b);
         pos += 3;
 
-        buf[pos] = self.muskets; pos += 1;
-        buf[pos] = self.horse_herds; pos += 1;
-        buf[pos] = self.unknown31c; pos += 1;
+        buf[pos] = self.muskets;
+        pos += 1;
+        buf[pos] = self.horse_herds;
+        pos += 1;
+        buf[pos] = self.unknown31c;
+        pos += 1;
 
         buf[pos..pos + 2].copy_from_slice(&self.horse_breeding.to_le_bytes());
         pos += 2;
@@ -153,5 +178,24 @@ impl Indian {
         }
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tribe_flags_round_trip() {
+        let flags = TribeFlags {
+            unknown01: 42,
+            extinct: true,
+        };
+
+        let byte = flags.write_byte();
+        let parsed = TribeFlags::read_byte(byte);
+
+        assert_eq!(parsed.unknown01, 42);
+        assert!(parsed.extinct);
     }
 }

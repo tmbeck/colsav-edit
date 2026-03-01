@@ -7,3 +7,6 @@ license = "Unlicense"
 
 [dependencies]
 thiserror = "2"
+
+[lints]
+workspace = true

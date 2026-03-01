@@ -1,7 +1,7 @@
 use crate::bits::{BitReader, BitWriter};
 use crate::enums::*;
+use crate::error::{Result, SaveError};
 use crate::goods::Goods16;
-use crate::error::{SaveError, Result};
 
 /// SAV file header. Fixed size = 390 bytes.
 /// Starts with "COLONIZE\0" magic marker.
@@ -11,53 +11,53 @@ const MAGIC: &[u8; 9] = b"COLONIZE\0";
 #[derive(Debug, Clone)]
 pub struct Header {
     // Offsets 0-8: magic "COLONIZE\0"
-    pub unknown00: [u8; 3],          // 9-11
-    pub map_size_x: u16,             // 12-13
-    pub map_size_y: u16,             // 14-15
-    pub tut1: u8,                    // 16
-    pub unknown03: u8,               // 17
-    pub game_options: GameOptions,   // 18-19 (16-bit bit_struct)
+    pub unknown00: [u8; 3],                         // 9-11
+    pub map_size_x: u16,                            // 12-13
+    pub map_size_y: u16,                            // 14-15
+    pub tut1: u8,                                   // 16
+    pub unknown03: u8,                              // 17
+    pub game_options: GameOptions,                  // 18-19 (16-bit bit_struct)
     pub colony_report_options: ColonyReportOptions, // 20-21 (16-bit bit_struct)
-    pub tut2: u8,                    // 22
-    pub tut3: u8,                    // 23
-    pub unknown39: [u8; 2],          // 24-25
-    pub year: u16,                   // 26-27
-    pub season: u16,                 // 28-29 (0=spring, 1=autumn)
-    pub turn: u16,                   // 30-31
-    pub tile_selection_mode: u8,     // 32
-    pub unknown40: u8,               // 33
-    pub active_unit: i16,            // 34-35
-    pub nation_turn: NationId,       // 36-37 (2-byte)
-    pub curr_nation_map_view: NationId, // 38-39
-    pub human_player: NationId,      // 40-41
-    pub tribe_count: u16,            // 42-43
-    pub unit_count: u16,             // 44-45
-    pub colony_count: u16,           // 46-47
-    pub trade_route_count: u16,      // 48-49 (unused per docs)
-    pub show_entire_map: u16,        // 50-51
-    pub fixed_nation_map_view: NationId, // 52-53
-    pub difficulty: u8,              // 54
-    pub unknown43a: u8,              // 55
-    pub unknown43b: u8,              // 56
-    pub founding_father: [u8; 25],   // 57-81
-    pub unknown44aa: [u8; 2],        // 82-83
-    pub manual_save_flag: u8,        // 84
-    pub unknown44ab: u8,             // 85
-    pub end_of_turn_sign: u16,       // 86-87
-    pub nation_relation: [u8; 8],    // 88-95
-    pub rebel_sentiment_report: i16, // 96-97
-    pub unknown45a: [u8; 8],         // 98-105
+    pub tut2: u8,                                   // 22
+    pub tut3: u8,                                   // 23
+    pub unknown39: [u8; 2],                         // 24-25
+    pub year: u16,                                  // 26-27
+    pub season: u16,                                // 28-29 (0=spring, 1=autumn)
+    pub turn: u16,                                  // 30-31
+    pub tile_selection_mode: u8,                    // 32
+    pub unknown40: u8,                              // 33
+    pub active_unit: i16,                           // 34-35
+    pub nation_turn: NationId,                      // 36-37 (2-byte)
+    pub curr_nation_map_view: NationId,             // 38-39
+    pub human_player: NationId,                     // 40-41
+    pub tribe_count: u16,                           // 42-43
+    pub unit_count: u16,                            // 44-45
+    pub colony_count: u16,                          // 46-47
+    pub trade_route_count: u16,                     // 48-49 (unused per docs)
+    pub show_entire_map: u16,                       // 50-51
+    pub fixed_nation_map_view: NationId,            // 52-53
+    pub difficulty: u8,                             // 54
+    pub unknown43a: u8,                             // 55
+    pub unknown43b: u8,                             // 56
+    pub founding_father: [u8; 25],                  // 57-81
+    pub unknown44aa: [u8; 2],                       // 82-83
+    pub manual_save_flag: u8,                       // 84
+    pub unknown44ab: u8,                            // 85
+    pub end_of_turn_sign: u16,                      // 86-87
+    pub nation_relation: [u8; 8],                   // 88-95
+    pub rebel_sentiment_report: i16,                // 96-97
+    pub unknown45a: [u8; 8],                        // 98-105
     pub expeditionary_force: [u16; 4], // 106-113 (regulars, dragoons, man-o-wars, artillery)
-    pub backup_force: [u16; 4],      // 114-121
+    pub backup_force: [u16; 4],        // 114-121
     pub price_group_state: Goods16<u16>, // 122-153
-    pub events: EventFlags,          // 154-155 (16-bit bit_struct)
-    pub unknown05: [u8; 2],          // 156-157
+    pub events: EventFlags,            // 154-155 (16-bit bit_struct)
+    pub unknown05: [u8; 2],            // 156-157
 
     // ---- COMPUTED (not stored, derived from above) ----
     // Total: 9+3+2+2+1+1+2+2+1+1+2+2+2+2+1+1+2+2+2+2+2+2+2+2+2+2+1+1+1+25+2+1+1+2+8+2+8+8+8+32+2+2
     // = 158 bytes? Let me recount...
     // Actually the header is 390 bytes total per JSON. We need to store remaining unknown bytes.
-    pub remaining: Vec<u8>,          // bytes 158..390 (232 bytes of trailing data)
+    pub remaining: Vec<u8>, // bytes 158..390 (232 bytes of trailing data)
 }
 
 /// Game options (16-bit bit_struct, big-endian bit order).
@@ -71,7 +71,7 @@ pub struct GameOptions {
     pub fast_piece_slide: bool,
     pub cheats_enabled: bool,
     pub show_foreign_moves: bool,
-    pub unused01: u8,             // 7 bits (preserved for round-trip)
+    pub unused01: u8, // 7 bits (preserved for round-trip)
     pub show_indian_moves: bool,
 }
 
@@ -122,7 +122,7 @@ pub struct ColonyReportOptions {
     pub report_when_colonists_trained: bool,
     pub report_sons_of_liberty_membership: bool,
     pub report_rebel_majorities: bool,
-    pub unused_bits: u8,                   // 6 bits (preserved for round-trip)
+    pub unused_bits: u8, // 6 bits (preserved for round-trip)
 }
 
 impl ColonyReportOptions {
@@ -250,8 +250,10 @@ impl Header {
         let map_size_y = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
 
-        let tut1 = data[pos]; pos += 1;
-        let unknown03 = data[pos]; pos += 1;
+        let tut1 = data[pos];
+        pos += 1;
+        let unknown03 = data[pos];
+        pos += 1;
 
         let game_options = GameOptions::read(&data[pos..]);
         pos += 2;
@@ -259,8 +261,10 @@ impl Header {
         let colony_report_options = ColonyReportOptions::read(&data[pos..]);
         pos += 2;
 
-        let tut2 = data[pos]; pos += 1;
-        let tut3 = data[pos]; pos += 1;
+        let tut2 = data[pos];
+        pos += 1;
+        let tut3 = data[pos];
+        pos += 1;
 
         let mut unknown39 = [0u8; 2];
         unknown39.copy_from_slice(&data[pos..pos + 2]);
@@ -273,8 +277,10 @@ impl Header {
         let turn = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
 
-        let tile_selection_mode = data[pos]; pos += 1;
-        let unknown40 = data[pos]; pos += 1;
+        let tile_selection_mode = data[pos];
+        pos += 1;
+        let unknown40 = data[pos];
+        pos += 1;
 
         let active_unit = i16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
@@ -299,9 +305,12 @@ impl Header {
         let fixed_nation_map_view = NationId::from_u16_le(&data[pos..]);
         pos += 2;
 
-        let difficulty = data[pos]; pos += 1;
-        let unknown43a = data[pos]; pos += 1;
-        let unknown43b = data[pos]; pos += 1;
+        let difficulty = data[pos];
+        pos += 1;
+        let unknown43a = data[pos];
+        pos += 1;
+        let unknown43b = data[pos];
+        pos += 1;
 
         let mut founding_father = [0u8; 25];
         founding_father.copy_from_slice(&data[pos..pos + 25]);
@@ -311,8 +320,10 @@ impl Header {
         unknown44aa.copy_from_slice(&data[pos..pos + 2]);
         pos += 2;
 
-        let manual_save_flag = data[pos]; pos += 1;
-        let unknown44ab = data[pos]; pos += 1;
+        let manual_save_flag = data[pos];
+        pos += 1;
+        let unknown44ab = data[pos];
+        pos += 1;
 
         let end_of_turn_sign = u16::from_le_bytes([data[pos], data[pos + 1]]);
         pos += 2;
@@ -415,16 +426,20 @@ impl Header {
         buf[pos..pos + 2].copy_from_slice(&self.map_size_y.to_le_bytes());
         pos += 2;
 
-        buf[pos] = self.tut1; pos += 1;
-        buf[pos] = self.unknown03; pos += 1;
+        buf[pos] = self.tut1;
+        pos += 1;
+        buf[pos] = self.unknown03;
+        pos += 1;
 
         self.game_options.write(&mut buf[pos..]);
         pos += 2;
         self.colony_report_options.write(&mut buf[pos..]);
         pos += 2;
 
-        buf[pos] = self.tut2; pos += 1;
-        buf[pos] = self.tut3; pos += 1;
+        buf[pos] = self.tut2;
+        pos += 1;
+        buf[pos] = self.tut3;
+        pos += 1;
         buf[pos..pos + 2].copy_from_slice(&self.unknown39);
         pos += 2;
 
@@ -435,8 +450,10 @@ impl Header {
         buf[pos..pos + 2].copy_from_slice(&self.turn.to_le_bytes());
         pos += 2;
 
-        buf[pos] = self.tile_selection_mode; pos += 1;
-        buf[pos] = self.unknown40; pos += 1;
+        buf[pos] = self.tile_selection_mode;
+        pos += 1;
+        buf[pos] = self.unknown40;
+        pos += 1;
 
         buf[pos..pos + 2].copy_from_slice(&self.active_unit.to_le_bytes());
         pos += 2;
@@ -461,16 +478,21 @@ impl Header {
         buf[pos..pos + 2].copy_from_slice(&self.fixed_nation_map_view.to_u16_le());
         pos += 2;
 
-        buf[pos] = self.difficulty; pos += 1;
-        buf[pos] = self.unknown43a; pos += 1;
-        buf[pos] = self.unknown43b; pos += 1;
+        buf[pos] = self.difficulty;
+        pos += 1;
+        buf[pos] = self.unknown43a;
+        pos += 1;
+        buf[pos] = self.unknown43b;
+        pos += 1;
 
         buf[pos..pos + 25].copy_from_slice(&self.founding_father);
         pos += 25;
         buf[pos..pos + 2].copy_from_slice(&self.unknown44aa);
         pos += 2;
-        buf[pos] = self.manual_save_flag; pos += 1;
-        buf[pos] = self.unknown44ab; pos += 1;
+        buf[pos] = self.manual_save_flag;
+        pos += 1;
+        buf[pos] = self.unknown44ab;
+        pos += 1;
         buf[pos..pos + 2].copy_from_slice(&self.end_of_turn_sign.to_le_bytes());
         pos += 2;
         buf[pos..pos + 8].copy_from_slice(&self.nation_relation);
@@ -503,5 +525,231 @@ impl Header {
         buf[pos..pos + rem_len].copy_from_slice(&self.remaining[..rem_len]);
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_game_options_round_trip() {
+        let opts = GameOptions {
+            tutorial_hints: true,
+            water_color_cycling: false,
+            combat_analysis: true,
+            autosave: true,
+            end_of_turn: false,
+            fast_piece_slide: true,
+            cheats_enabled: false,
+            show_foreign_moves: true,
+            unused01: 0b0101010,
+            show_indian_moves: true,
+        };
+
+        let mut buf = [0u8; 2];
+        opts.write(&mut buf);
+        let parsed = GameOptions::read(&buf);
+
+        assert_eq!(parsed.tutorial_hints, opts.tutorial_hints);
+        assert_eq!(parsed.water_color_cycling, opts.water_color_cycling);
+        assert_eq!(parsed.combat_analysis, opts.combat_analysis);
+        assert_eq!(parsed.autosave, opts.autosave);
+        assert_eq!(parsed.end_of_turn, opts.end_of_turn);
+        assert_eq!(parsed.fast_piece_slide, opts.fast_piece_slide);
+        assert_eq!(parsed.cheats_enabled, opts.cheats_enabled);
+        assert_eq!(parsed.show_foreign_moves, opts.show_foreign_moves);
+        assert_eq!(parsed.unused01, opts.unused01);
+        assert_eq!(parsed.show_indian_moves, opts.show_indian_moves);
+    }
+
+    #[test]
+    fn test_colony_report_options_round_trip() {
+        let opts = ColonyReportOptions {
+            labels_on_cargo_and_terrain: true,
+            labels_on_buildings: false,
+            report_new_cargos_available: true,
+            report_inefficient_government: false,
+            report_tools_needed_for_production: true,
+            report_raw_materials_shortages: true,
+            report_food_shortages: false,
+            report_when_colonists_trained: true,
+            report_sons_of_liberty_membership: false,
+            report_rebel_majorities: true,
+            unused_bits: 0b101011,
+        };
+
+        let mut buf = [0u8; 2];
+        opts.write(&mut buf);
+        let parsed = ColonyReportOptions::read(&buf);
+
+        assert_eq!(
+            parsed.labels_on_cargo_and_terrain,
+            opts.labels_on_cargo_and_terrain
+        );
+        assert_eq!(parsed.labels_on_buildings, opts.labels_on_buildings);
+        assert_eq!(
+            parsed.report_new_cargos_available,
+            opts.report_new_cargos_available
+        );
+        assert_eq!(
+            parsed.report_inefficient_government,
+            opts.report_inefficient_government
+        );
+        assert_eq!(
+            parsed.report_tools_needed_for_production,
+            opts.report_tools_needed_for_production
+        );
+        assert_eq!(
+            parsed.report_raw_materials_shortages,
+            opts.report_raw_materials_shortages
+        );
+        assert_eq!(parsed.report_food_shortages, opts.report_food_shortages);
+        assert_eq!(
+            parsed.report_when_colonists_trained,
+            opts.report_when_colonists_trained
+        );
+        assert_eq!(
+            parsed.report_sons_of_liberty_membership,
+            opts.report_sons_of_liberty_membership
+        );
+        assert_eq!(parsed.report_rebel_majorities, opts.report_rebel_majorities);
+        assert_eq!(parsed.unused_bits, opts.unused_bits);
+    }
+
+    #[test]
+    fn test_event_flags_round_trip() {
+        let flags = EventFlags {
+            discovery_of_the_new_world: true,
+            building_a_colony: false,
+            meeting_the_natives: true,
+            the_aztec_empire: false,
+            the_inca_nation: true,
+            discovery_of_the_pacific_ocean: false,
+            entering_indian_village: true,
+            the_fountain_of_youth: false,
+            cargo_from_the_new_world: true,
+            meeting_fellow_europeans: false,
+            colony_burning: true,
+            colony_destroyed: false,
+            indian_raid: true,
+            woodcut14: false,
+            woodcut15: true,
+            woodcut16: false,
+        };
+
+        let mut buf = [0u8; 2];
+        flags.write(&mut buf);
+        let parsed = EventFlags::read(&buf);
+
+        assert_eq!(
+            parsed.discovery_of_the_new_world,
+            flags.discovery_of_the_new_world
+        );
+        assert_eq!(parsed.building_a_colony, flags.building_a_colony);
+        assert_eq!(parsed.meeting_the_natives, flags.meeting_the_natives);
+        assert_eq!(parsed.the_aztec_empire, flags.the_aztec_empire);
+        assert_eq!(parsed.the_inca_nation, flags.the_inca_nation);
+        assert_eq!(
+            parsed.discovery_of_the_pacific_ocean,
+            flags.discovery_of_the_pacific_ocean
+        );
+        assert_eq!(
+            parsed.entering_indian_village,
+            flags.entering_indian_village
+        );
+        assert_eq!(parsed.the_fountain_of_youth, flags.the_fountain_of_youth);
+        assert_eq!(
+            parsed.cargo_from_the_new_world,
+            flags.cargo_from_the_new_world
+        );
+        assert_eq!(
+            parsed.meeting_fellow_europeans,
+            flags.meeting_fellow_europeans
+        );
+        assert_eq!(parsed.colony_burning, flags.colony_burning);
+        assert_eq!(parsed.colony_destroyed, flags.colony_destroyed);
+        assert_eq!(parsed.indian_raid, flags.indian_raid);
+        assert_eq!(parsed.woodcut14, flags.woodcut14);
+        assert_eq!(parsed.woodcut15, flags.woodcut15);
+        assert_eq!(parsed.woodcut16, flags.woodcut16);
+    }
+
+    #[test]
+    fn test_event_flags_all_true() {
+        let flags = EventFlags {
+            discovery_of_the_new_world: true,
+            building_a_colony: true,
+            meeting_the_natives: true,
+            the_aztec_empire: true,
+            the_inca_nation: true,
+            discovery_of_the_pacific_ocean: true,
+            entering_indian_village: true,
+            the_fountain_of_youth: true,
+            cargo_from_the_new_world: true,
+            meeting_fellow_europeans: true,
+            colony_burning: true,
+            colony_destroyed: true,
+            indian_raid: true,
+            woodcut14: true,
+            woodcut15: true,
+            woodcut16: true,
+        };
+
+        let mut buf = [0u8; 2];
+        flags.write(&mut buf);
+        let parsed = EventFlags::read(&buf);
+
+        assert!(parsed.discovery_of_the_new_world);
+        assert!(parsed.building_a_colony);
+        assert!(parsed.meeting_the_natives);
+        assert!(parsed.the_aztec_empire);
+        assert!(parsed.the_inca_nation);
+        assert!(parsed.discovery_of_the_pacific_ocean);
+        assert!(parsed.entering_indian_village);
+        assert!(parsed.the_fountain_of_youth);
+        assert!(parsed.cargo_from_the_new_world);
+        assert!(parsed.meeting_fellow_europeans);
+        assert!(parsed.colony_burning);
+        assert!(parsed.colony_destroyed);
+        assert!(parsed.indian_raid);
+        assert!(parsed.woodcut14);
+        assert!(parsed.woodcut15);
+        assert!(parsed.woodcut16);
+    }
+
+    #[test]
+    fn test_game_options_preserves_unused_bits() {
+        let opts = GameOptions {
+            unused01: 0b1010101,
+            ..GameOptions::default()
+        };
+
+        let mut buf = [0u8; 2];
+        opts.write(&mut buf);
+        let parsed = GameOptions::read(&buf);
+
+        assert_eq!(parsed.unused01, 0b1010101);
+    }
+
+    #[test]
+    fn test_header_read_rejects_bad_magic() {
+        let data = vec![0u8; HEADER_SIZE];
+        let result = Header::read(&data);
+        assert!(matches!(result, Err(SaveError::InvalidMagic)));
+    }
+
+    #[test]
+    fn test_header_read_rejects_short_data() {
+        let data = vec![0u8; HEADER_SIZE - 1];
+        let result = Header::read(&data);
+        assert!(matches!(
+            result,
+            Err(SaveError::UnexpectedEof {
+                offset: 0,
+                needed: HEADER_SIZE,
+                available
+            }) if available == HEADER_SIZE - 1
+        ));
     }
 }

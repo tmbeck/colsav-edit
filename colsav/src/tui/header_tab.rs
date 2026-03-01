@@ -1,4 +1,4 @@
-use colonization_sav::{ControlType, Difficulty, Season, SaveFile};
+use colonization_sav::{ControlType, Difficulty, SaveFile, Season};
 use ratatui::prelude::*;
 use ratatui::widgets::{Block, Paragraph};
 
@@ -8,9 +8,7 @@ fn enum_name<T>(value: u8) -> String
 where
     T: TryFrom<u8, Error = u8> + ToString,
 {
-    T::try_from(value)
-        .map(|v| v.to_string())
-        .unwrap_or_else(|v| format!("Unknown(0x{v:02X})"))
+    T::try_from(value).map_or_else(|v| format!("Unknown(0x{v:02X})"), |v| v.to_string())
 }
 
 pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile) {
@@ -19,7 +17,10 @@ pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile) {
     let season = enum_name::<Season>(header.season as u8);
 
     let mut lines = vec![
-        Line::from(vec![Span::styled("COLONIZATION SAVE HEADER", theme::header())]),
+        Line::from(vec![Span::styled(
+            "COLONIZATION SAVE HEADER",
+            theme::header(),
+        )]),
         Line::from(""),
         Line::from(format!("Year: {}  Season: {}", header.year, season)),
         Line::from(format!("Turn: {}  Difficulty: {}", header.turn, difficulty)),
@@ -48,7 +49,10 @@ pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile) {
     }
 
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("Game Options", theme::header())]));
+    lines.push(Line::from(vec![Span::styled(
+        "Game Options",
+        theme::header(),
+    )]));
     lines.push(Line::from(format!(
         "Tutorial: {}  Autosave: {}  Combat Analysis: {}  Cheats: {}",
         yes_no(header.game_options.tutorial_hints),

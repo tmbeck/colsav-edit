@@ -215,7 +215,7 @@ impl NationId {
 impl fmt::Display for NationId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            NationId::Nation(n) => write!(f, "{}", n),
+            NationId::Nation(n) => write!(f, "{n}"),
             NationId::None => write!(f, "None"),
         }
     }
@@ -359,7 +359,7 @@ impl From<TerrainType> for u8 {
 
 impl fmt::Display for TerrainType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -395,5 +395,126 @@ impl TryFrom<u8> for HillsRiver {
 impl From<HillsRiver> for u8 {
     fn from(v: HillsRiver) -> u8 {
         v as u8
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_unit_type_try_from_valid() {
+        let variants = [
+            UnitType::Colonist,
+            UnitType::Soldier,
+            UnitType::Pioneer,
+            UnitType::Missionary,
+            UnitType::Dragoon,
+            UnitType::Scout,
+            UnitType::ToryRegular,
+            UnitType::ContinentalCavalry,
+            UnitType::ToryCavalry,
+            UnitType::ContinentalArmy,
+            UnitType::Treasure,
+            UnitType::Artillery,
+            UnitType::WagonTrain,
+            UnitType::Caravel,
+            UnitType::Merchantman,
+            UnitType::Galleon,
+            UnitType::Privateer,
+            UnitType::Frigate,
+            UnitType::ManOWar,
+            UnitType::Brave,
+            UnitType::ArmedBrave,
+            UnitType::MountedBrave,
+            UnitType::MountedWarrior,
+        ];
+
+        for variant in variants {
+            let value = u8::from(variant);
+            assert_eq!(UnitType::try_from(value), Ok(variant));
+        }
+    }
+
+    #[test]
+    fn test_unit_type_try_from_invalid() {
+        assert_eq!(UnitType::try_from(0xFF), Err(0xFF));
+    }
+
+    #[test]
+    fn test_nation_id_none() {
+        assert_eq!(NationId::from_u8(0xFF), NationId::None);
+    }
+
+    #[test]
+    fn test_nation_id_round_trip_u16() {
+        let ids = [
+            NationId::Nation(NationType::England),
+            NationId::Nation(NationType::France),
+            NationId::Nation(NationType::Spain),
+            NationId::Nation(NationType::Netherlands),
+        ];
+
+        for id in ids {
+            let bytes = id.to_u16_le();
+            let parsed = NationId::from_u16_le(&bytes);
+            assert_eq!(parsed, id);
+        }
+    }
+
+    #[test]
+    fn test_terrain_type_try_from_all_valid() {
+        let variants = [
+            TerrainType::Tundra,
+            TerrainType::Desert,
+            TerrainType::Plains,
+            TerrainType::Prairie,
+            TerrainType::Grassland,
+            TerrainType::Savannah,
+            TerrainType::Marsh,
+            TerrainType::Swamp,
+            TerrainType::TundraForest,
+            TerrainType::DesertForest,
+            TerrainType::PlainsForest,
+            TerrainType::PrairieForest,
+            TerrainType::GrasslandForest,
+            TerrainType::SavannahForest,
+            TerrainType::MarshForest,
+            TerrainType::SwampForest,
+            TerrainType::TundraForestW,
+            TerrainType::DesertForestW,
+            TerrainType::PlainsForestW,
+            TerrainType::PrairieForestW,
+            TerrainType::GrasslandForestW,
+            TerrainType::SavannahForestW,
+            TerrainType::MarshForestW,
+            TerrainType::SwampForestW,
+            TerrainType::Arctic,
+            TerrainType::Ocean,
+            TerrainType::SeaLane,
+        ];
+
+        for variant in variants {
+            let value = u8::from(variant);
+            assert_eq!(TerrainType::try_from(value), Ok(variant));
+        }
+    }
+
+    #[test]
+    fn test_hills_river_round_trip() {
+        let variants = [
+            HillsRiver::Nothing,
+            HillsRiver::Hills,
+            HillsRiver::River,
+            HillsRiver::RiverHills,
+            HillsRiver::Unknown,
+            HillsRiver::Mountains,
+            HillsRiver::MajorRiver,
+        ];
+
+        for variant in variants {
+            let value = u8::from(variant);
+            assert_eq!(HillsRiver::try_from(value), Ok(variant));
+        }
     }
 }

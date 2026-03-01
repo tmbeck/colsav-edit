@@ -10,9 +10,12 @@ use super::theme;
 const NATION_NAMES: [&str; 4] = ["England", "France", "Spain", "Netherlands"];
 
 pub fn render(frame: &mut Frame, area: Rect, app: &App) {
-    let rows = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(area);
-    let top = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[0]);
-    let bottom = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[1]);
+    let rows =
+        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(area);
+    let top =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[0]);
+    let bottom =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[1]);
 
     let panels = [top[0], top[1], bottom[0], bottom[1]];
     for (idx, panel) in panels.iter().enumerate() {
@@ -29,14 +32,23 @@ fn render_nation_panel(frame: &mut Frame, area: Rect, app: &App, idx: usize) {
 
     lines.push(gold_label);
     lines.push(tax_label);
-    lines.push(Line::from(format!("Liberty Bells: {}", nation.liberty_bells_total)));
+    lines.push(Line::from(format!(
+        "Liberty Bells: {}",
+        nation.liberty_bells_total
+    )));
     lines.push(Line::from(format!(
         "Founding Fathers: {}",
         nation.founding_father_count
     )));
-    lines.push(Line::from(format!("Rebel Sentiment: {}", nation.rebel_sentiment)));
+    lines.push(Line::from(format!(
+        "Rebel Sentiment: {}",
+        nation.rebel_sentiment
+    )));
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("Trade Prices", theme::header())]));
+    lines.push(Line::from(vec![Span::styled(
+        "Trade Prices",
+        theme::header(),
+    )]));
     for (gidx, goods) in GOODS_NAMES.iter().enumerate() {
         lines.push(Line::from(format!(
             "{goods:<11}: {}",
@@ -45,7 +57,10 @@ fn render_nation_panel(frame: &mut Frame, area: Rect, app: &App, idx: usize) {
     }
 
     lines.push(Line::from(""));
-    lines.push(Line::from(vec![Span::styled("Founding Fathers", theme::header())]));
+    lines.push(Line::from(vec![Span::styled(
+        "Founding Fathers",
+        theme::header(),
+    )]));
     for father in founding_fathers(nation) {
         lines.push(Line::from(format!("- {father}")));
     }
@@ -56,15 +71,19 @@ fn render_nation_panel(frame: &mut Frame, area: Rect, app: &App, idx: usize) {
     } else {
         theme::border()
     };
-    let paragraph = Paragraph::new(Text::from(lines)).style(theme::base()).block(
-        Block::bordered()
-            .title(title)
-            .border_style(style),
-    );
+    let paragraph = Paragraph::new(Text::from(lines))
+        .style(theme::base())
+        .block(Block::bordered().title(title).border_style(style));
     frame.render_widget(paragraph, area);
 }
 
-fn editable_line(app: &App, nation_idx: usize, field_idx: usize, label: &str, value: String) -> Line<'static> {
+fn editable_line(
+    app: &App,
+    nation_idx: usize,
+    field_idx: usize,
+    label: &str,
+    value: String,
+) -> Line<'static> {
     let selected = app.nation_selected == nation_idx && app.nation_field_selected == field_idx;
     let is_editing = match app.edit_field {
         Some(EditField::NationGold(i)) | Some(EditField::NationTax(i)) => i == nation_idx,
@@ -89,15 +108,26 @@ pub fn edit_cursor_position(area: Rect, app: &App) -> Option<(u16, u16)> {
         return None;
     }
 
-    let rows = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(area);
-    let top = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[0]);
-    let bottom = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[1]);
+    let rows =
+        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(area);
+    let top =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[0]);
+    let bottom =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(rows[1]);
     let panels = [top[0], top[1], bottom[0], bottom[1]];
     let panel = *panels.get(app.nation_selected)?;
 
-    let field_line = if app.nation_field_selected == 0 { 0 } else { 1 };
-    let label_len: u16 = if app.nation_field_selected == 0 { 6 } else { 10 };
-    let x = panel.x.saturating_add(1).saturating_add(label_len).saturating_add(app.edit_buffer.len() as u16);
+    let field_line = u16::from(app.nation_field_selected != 0);
+    let label_len: u16 = if app.nation_field_selected == 0 {
+        6
+    } else {
+        10
+    };
+    let x = panel
+        .x
+        .saturating_add(1)
+        .saturating_add(label_len)
+        .saturating_add(app.edit_buffer.len() as u16);
     let y = panel.y.saturating_add(1).saturating_add(field_line);
     Some((x, y))
 }

@@ -10,13 +10,12 @@ fn enum_name<T>(value: u8) -> String
 where
     T: TryFrom<u8, Error = u8> + ToString,
 {
-    T::try_from(value)
-        .map(|v| v.to_string())
-        .unwrap_or_else(|v| format!("Unknown(0x{v:02X})"))
+    T::try_from(value).map_or_else(|v| format!("Unknown(0x{v:02X})"), |v| v.to_string())
 }
 
 pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile, state: &mut TableState) {
-    let chunks = Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)]).split(area);
+    let chunks =
+        Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)]).split(area);
 
     let rows: Vec<Row> = save
         .units
@@ -58,14 +57,16 @@ pub fn render(frame: &mut Frame, area: Rect, save: &SaveFile, state: &mut TableS
     frame.render_stateful_widget(table, chunks[0], state);
 
     let selected = state.selected().unwrap_or(0);
-    let detail = save.units.get(selected).map(unit_detail).unwrap_or_default();
-    let detail_paragraph = Paragraph::new(detail)
-        .style(theme::base())
-        .block(
-            Block::bordered()
-                .title(" Unit Detail ")
-                .border_style(theme::border()),
-        );
+    let detail = save
+        .units
+        .get(selected)
+        .map(unit_detail)
+        .unwrap_or_default();
+    let detail_paragraph = Paragraph::new(detail).style(theme::base()).block(
+        Block::bordered()
+            .title(" Unit Detail ")
+            .border_style(theme::border()),
+    );
     frame.render_widget(detail_paragraph, chunks[1]);
 }
 
@@ -75,7 +76,10 @@ fn unit_detail(unit: &Unit) -> Text<'static> {
             enum_name::<UnitType>(unit.unit_type),
             theme::header(),
         )]),
-        Line::from(format!("Nation: {}", enum_name::<NationType>(unit.nation_id))),
+        Line::from(format!(
+            "Nation: {}",
+            enum_name::<NationType>(unit.nation_id)
+        )),
         Line::from(format!("Position: ({}, {})", unit.x, unit.y)),
         Line::from(format!("Orders: {}", enum_name::<OrdersType>(unit.orders))),
         Line::from(format!(

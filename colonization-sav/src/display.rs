@@ -1,7 +1,7 @@
 use std::fmt;
 
 use crate::enums::{
-    ControlType, Difficulty, NationType, OrdersType, ProfessionType, Season, UnitType, CargoType,
+    CargoType, ControlType, Difficulty, NationType, OrdersType, ProfessionType, Season, UnitType,
 };
 use crate::goods::GOODS_NAMES;
 use crate::raw::{Colony, Header, Nation, Player, Unit};
@@ -64,18 +64,12 @@ fn constructable_name(value: u8) -> String {
 
 impl fmt::Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let unit_type = UnitType::try_from(self.unit_type)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
-        let power = NationType::try_from(self.nation_id)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
+        let unit_type =
+            UnitType::try_from(self.unit_type).map_or_else(unknown_u8, |v| v.to_string());
+        let power = NationType::try_from(self.nation_id).map_or_else(unknown_u8, |v| v.to_string());
         let occupation = ProfessionType::try_from(self.profession_or_treasure)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
-        let order = OrdersType::try_from(self.orders)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
+            .map_or_else(unknown_u8, |v| v.to_string());
+        let order = OrdersType::try_from(self.orders).map_or_else(unknown_u8, |v| v.to_string());
 
         writeln!(f, "Type: {unit_type}")?;
         if matches!(UnitType::try_from(self.unit_type), Ok(UnitType::Pioneer)) {
@@ -89,10 +83,15 @@ impl fmt::Display for Unit {
 
         let cargo_count = usize::min(self.holds_occupied as usize, self.cargo_items.len());
         for i in 0..cargo_count {
-            let cargo_name = CargoType::try_from(self.cargo_items[i])
-                .map(|v| v.to_string())
-                .unwrap_or_else(|v| unknown_u8(v));
-            writeln!(f, "    Cargo {}: {} {}", i + 1, cargo_name, self.cargo_hold[i])?;
+            let cargo_name =
+                CargoType::try_from(self.cargo_items[i]).map_or_else(unknown_u8, |v| v.to_string());
+            writeln!(
+                f,
+                "    Cargo {}: {} {}",
+                i + 1,
+                cargo_name,
+                self.cargo_hold[i]
+            )?;
         }
 
         Ok(())
@@ -101,16 +100,18 @@ impl fmt::Display for Unit {
 
 impl fmt::Display for Colony {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let power = NationType::try_from(self.nation_id)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
+        let power = NationType::try_from(self.nation_id).map_or_else(unknown_u8, |v| v.to_string());
 
         writeln!(f, "Name: {}", self.name())?;
         writeln!(f, "Position: ({}, {})", self.x, self.y)?;
         writeln!(f, "  Power: {power}")?;
         writeln!(f, "  Population: {}", self.population)?;
         writeln!(f, "  Hammers: {}", self.hammers)?;
-        writeln!(f, "  Constructing: {}", constructable_name(self.building_in_production))?;
+        writeln!(
+            f,
+            "  Constructing: {}",
+            constructable_name(self.building_in_production)
+        )?;
         writeln!(f, "  Bells: {}", self.rebel_dividend)?;
         writeln!(f, "  Storage:")?;
 
@@ -134,9 +135,8 @@ impl fmt::Display for Nation {
 
 impl fmt::Display for Player {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let control = ControlType::try_from(self.control)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
+        let control =
+            ControlType::try_from(self.control).map_or_else(unknown_u8, |v| v.to_string());
 
         writeln!(f, "Player: {}", self.name())?;
         writeln!(f, "  Country: {}", self.country_name())?;
@@ -148,17 +148,14 @@ impl fmt::Display for Player {
 
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let difficulty = Difficulty::try_from(self.difficulty)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v));
-        let season = Season::try_from(self.season as u8)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|v| unknown_u8(v as u8));
+        let difficulty =
+            Difficulty::try_from(self.difficulty).map_or_else(unknown_u8, |v| v.to_string());
+        let season = Season::try_from(self.season as u8).map_or_else(unknown_u8, |v| v.to_string());
 
         writeln!(f, "Colonization Save File")?;
         writeln!(f, "  Year: {}, {}", self.year, season)?;
         writeln!(f, "  Turn: {}", self.turn)?;
-        writeln!(f, "  Difficulty: {}", difficulty)?;
+        writeln!(f, "  Difficulty: {difficulty}")?;
         writeln!(f, "  Map: {} x {}", self.map_size_x, self.map_size_y)?;
         writeln!(f, "  Colonies: {}", self.colony_count)?;
         writeln!(f, "  Units: {}", self.unit_count)?;

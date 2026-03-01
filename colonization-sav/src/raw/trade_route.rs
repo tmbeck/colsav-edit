@@ -9,8 +9,8 @@ pub const TRADE_ROUTE_COUNT: usize = 12;
 pub struct TradeRouteStop {
     pub colony_index: u16,
     /// Nibble pair: high 4 bits = unloads_count, low 4 bits = loads_count
-    pub unloads_count: u8,      // 4 bits
-    pub loads_count: u8,        // 4 bits
+    pub unloads_count: u8, // 4 bits
+    pub loads_count: u8, // 4 bits
     /// 6 cargo type nibbles for loads (3 bytes = 6 × 4-bit)
     pub loads_cargo: [u8; 6],
     /// 6 cargo type nibbles for unloads (3 bytes = 6 × 4-bit)
@@ -29,7 +29,8 @@ impl TradeRouteStop {
         pos += 2;
 
         // loads_and_unloads_count: bit_struct (1 byte)
-        let count_byte = data[pos]; pos += 1;
+        let count_byte = data[pos];
+        pos += 1;
         let mut cr = BitReader::new(std::slice::from_ref(&count_byte));
         let unloads_count = cr.read_u8(4);
         let loads_count = cr.read_u8(4);
@@ -53,8 +54,12 @@ impl TradeRouteStop {
         let unknown = data[pos];
 
         Self {
-            colony_index, unloads_count, loads_count,
-            loads_cargo, unloads_cargo, unknown,
+            colony_index,
+            unloads_count,
+            loads_count,
+            loads_cargo,
+            unloads_cargo,
+            unknown,
         }
     }
 
@@ -90,11 +95,10 @@ impl TradeRouteStop {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct TradeRoute {
-    pub name_raw: [u8; 32],      // 32 bytes, raw preservation
-    pub land_or_sea: u8,        // trade_route_type (0=land, 1=sea)
+    pub name_raw: [u8; 32], // 32 bytes, raw preservation
+    pub land_or_sea: u8,    // trade_route_type (0=land, 1=sea)
     pub stops_count: u8,
     pub stops: [TradeRouteStop; 4],
 }
@@ -116,8 +120,10 @@ impl TradeRoute {
         name_raw.copy_from_slice(&data[pos..pos + 32]);
         pos += 32;
 
-        let land_or_sea = data[pos]; pos += 1;
-        let stops_count = data[pos]; pos += 1;
+        let land_or_sea = data[pos];
+        pos += 1;
+        let stops_count = data[pos];
+        pos += 1;
 
         let mut stops = [TradeRouteStop::default(); 4];
         for stop in &mut stops {
@@ -125,7 +131,12 @@ impl TradeRoute {
             pos += TradeRouteStop::SIZE;
         }
 
-        Ok(TradeRoute { name_raw, land_or_sea, stops_count, stops })
+        Ok(TradeRoute {
+            name_raw,
+            land_or_sea,
+            stops_count,
+            stops,
+        })
     }
 
     pub fn write(&self) -> Vec<u8> {
@@ -135,8 +146,10 @@ impl TradeRoute {
         buf[pos..pos + 32].copy_from_slice(&self.name_raw);
         pos += 32;
 
-        buf[pos] = self.land_or_sea; pos += 1;
-        buf[pos] = self.stops_count; pos += 1;
+        buf[pos] = self.land_or_sea;
+        pos += 1;
+        buf[pos] = self.stops_count;
+        pos += 1;
 
         for stop in &self.stops {
             stop.write(&mut buf[pos..]);
@@ -144,5 +157,47 @@ impl TradeRoute {
         }
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trade_route_stop_round_trip() {
+        let stop = TradeRouteStop {
+            colony_index: 321,
+            unloads_count: 4,
+            loads_count: 2,
+            loads_cargo: [1, 2, 3, 4, 5, 6],
+            unloads_cargo: [6, 5, 4, 3, 2, 1],
+            unknown: 0xAB,
+        };
+
+        let mut buf = [0u8; TradeRouteStop::SIZE];
+        stop.write(&mut buf);
+        let parsed = TradeRouteStop::read(&buf);
+
+        assert_eq!(parsed.colony_index, stop.colony_index);
+        assert_eq!(parsed.unloads_count, stop.unloads_count);
+        assert_eq!(parsed.loads_count, stop.loads_count);
+        assert_eq!(parsed.loads_cargo, stop.loads_cargo);
+        assert_eq!(parsed.unloads_cargo, stop.unloads_cargo);
+        assert_eq!(parsed.unknown, stop.unknown);
+    }
+
+    #[test]
+    fn test_trade_route_name() {
+        let mut name_raw = [0u8; 32];
+        name_raw[..10].copy_from_slice(b"Sugar Run\0");
+        let route = TradeRoute {
+            name_raw,
+            land_or_sea: 0,
+            stops_count: 0,
+            stops: [TradeRouteStop::default(); 4],
+        };
+
+        assert_eq!(route.name(), "Sugar Run");
     }
 }

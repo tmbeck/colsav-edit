@@ -11,7 +11,7 @@ pub struct TribeBLCS {
     pub learned: bool,
     pub capital: bool,
     pub scouted: bool,
-    pub unused: u8,             // 4 bits
+    pub unused: u8, // 4 bits
 }
 
 impl TribeBLCS {
@@ -40,9 +40,9 @@ impl TribeBLCS {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TribeMission {
-    pub nation_id: u8,          // 4 bits (nation_4bit_type)
-    pub expert: bool,           // 1 bit
-    pub unknown: u8,            // 3 bits
+    pub nation_id: u8, // 4 bits (nation_4bit_type)
+    pub expert: bool,  // 1 bit
+    pub unknown: u8,   // 3 bits
 }
 
 impl TribeMission {
@@ -76,12 +76,12 @@ pub struct TribeAlarm {
 pub struct Tribe {
     pub x: u8,
     pub y: u8,
-    pub nation_id: u8,          // nation_type (Indian nation 4-11)
+    pub nation_id: u8, // nation_type (Indian nation 4-11)
     pub blcs: TribeBLCS,
     pub population: u8,
     pub mission: TribeMission,
     pub growth_counter: u8,
-    pub unknown28a: u8,         // always seems to be 0xFF
+    pub unknown28a: u8, // always seems to be 0xFF
     pub last_bought: u8,
     pub last_sold: u8,
     pub alarm: [TribeAlarm; 4], // per European power
@@ -91,26 +91,46 @@ impl Tribe {
     pub fn read(data: &[u8]) -> Result<Self> {
         let mut pos = 0;
 
-        let x = data[pos]; pos += 1;
-        let y = data[pos]; pos += 1;
-        let nation_id = data[pos]; pos += 1;
-        let blcs = TribeBLCS::read_byte(data[pos]); pos += 1;
-        let population = data[pos]; pos += 1;
-        let mission = TribeMission::read_byte(data[pos]); pos += 1;
-        let growth_counter = data[pos]; pos += 1;
-        let unknown28a = data[pos]; pos += 1;
-        let last_bought = data[pos]; pos += 1;
-        let last_sold = data[pos]; pos += 1;
+        let x = data[pos];
+        pos += 1;
+        let y = data[pos];
+        pos += 1;
+        let nation_id = data[pos];
+        pos += 1;
+        let blcs = TribeBLCS::read_byte(data[pos]);
+        pos += 1;
+        let population = data[pos];
+        pos += 1;
+        let mission = TribeMission::read_byte(data[pos]);
+        pos += 1;
+        let growth_counter = data[pos];
+        pos += 1;
+        let unknown28a = data[pos];
+        pos += 1;
+        let last_bought = data[pos];
+        pos += 1;
+        let last_sold = data[pos];
+        pos += 1;
 
         let mut alarm = [TribeAlarm::default(); 4];
         for a in &mut alarm {
-            a.friction = data[pos]; pos += 1;
-            a.attacks = data[pos]; pos += 1;
+            a.friction = data[pos];
+            pos += 1;
+            a.attacks = data[pos];
+            pos += 1;
         }
 
         Ok(Tribe {
-            x, y, nation_id, blcs, population, mission,
-            growth_counter, unknown28a, last_bought, last_sold,
+            x,
+            y,
+            nation_id,
+            blcs,
+            population,
+            mission,
+            growth_counter,
+            unknown28a,
+            last_bought,
+            last_sold,
             alarm,
         })
     }
@@ -119,22 +139,75 @@ impl Tribe {
         let mut buf = vec![0u8; TRIBE_SIZE];
         let mut pos = 0;
 
-        buf[pos] = self.x; pos += 1;
-        buf[pos] = self.y; pos += 1;
-        buf[pos] = self.nation_id; pos += 1;
-        buf[pos] = self.blcs.write_byte(); pos += 1;
-        buf[pos] = self.population; pos += 1;
-        buf[pos] = self.mission.write_byte(); pos += 1;
-        buf[pos] = self.growth_counter; pos += 1;
-        buf[pos] = self.unknown28a; pos += 1;
-        buf[pos] = self.last_bought; pos += 1;
-        buf[pos] = self.last_sold; pos += 1;
+        buf[pos] = self.x;
+        pos += 1;
+        buf[pos] = self.y;
+        pos += 1;
+        buf[pos] = self.nation_id;
+        pos += 1;
+        buf[pos] = self.blcs.write_byte();
+        pos += 1;
+        buf[pos] = self.population;
+        pos += 1;
+        buf[pos] = self.mission.write_byte();
+        pos += 1;
+        buf[pos] = self.growth_counter;
+        pos += 1;
+        buf[pos] = self.unknown28a;
+        pos += 1;
+        buf[pos] = self.last_bought;
+        pos += 1;
+        buf[pos] = self.last_sold;
+        pos += 1;
 
         for a in &self.alarm {
-            buf[pos] = a.friction; pos += 1;
-            buf[pos] = a.attacks; pos += 1;
+            buf[pos] = a.friction;
+            pos += 1;
+            buf[pos] = a.attacks;
+            pos += 1;
         }
 
         buf
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tribe_blcs_round_trip() {
+        let blcs = TribeBLCS {
+            brave_missing: true,
+            learned: false,
+            capital: true,
+            scouted: true,
+            unused: 0b1010,
+        };
+
+        let byte = blcs.write_byte();
+        let parsed = TribeBLCS::read_byte(byte);
+
+        assert_eq!(parsed.brave_missing, blcs.brave_missing);
+        assert_eq!(parsed.learned, blcs.learned);
+        assert_eq!(parsed.capital, blcs.capital);
+        assert_eq!(parsed.scouted, blcs.scouted);
+        assert_eq!(parsed.unused, blcs.unused);
+    }
+
+    #[test]
+    fn test_tribe_mission_round_trip() {
+        let mission = TribeMission {
+            nation_id: 5,
+            expert: true,
+            unknown: 3,
+        };
+
+        let byte = mission.write_byte();
+        let parsed = TribeMission::read_byte(byte);
+
+        assert_eq!(parsed.nation_id, 5);
+        assert!(parsed.expert);
+        assert_eq!(parsed.unknown, 3);
     }
 }

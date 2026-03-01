@@ -4,12 +4,22 @@ pub enum Tab {
     Colonies,
     Units,
     Nations,
+    TradeRoutes,
+    Tribes,
     Map,
 }
 
 impl Tab {
-    pub fn titles() -> [&'static str; 5] {
-        ["Header", "Colonies", "Units", "Nations", "Map"]
+    pub fn titles() -> [&'static str; 7] {
+        [
+            "Header",
+            "Colonies",
+            "Units",
+            "Nations",
+            "Trade Routes",
+            "Tribes",
+            "Map",
+        ]
     }
 
     pub fn index(self) -> usize {
@@ -18,7 +28,9 @@ impl Tab {
             Tab::Colonies => 1,
             Tab::Units => 2,
             Tab::Nations => 3,
-            Tab::Map => 4,
+            Tab::TradeRoutes => 4,
+            Tab::Tribes => 5,
+            Tab::Map => 6,
         }
     }
 
@@ -28,15 +40,17 @@ impl Tab {
             1 => Tab::Colonies,
             2 => Tab::Units,
             3 => Tab::Nations,
+            4 => Tab::TradeRoutes,
+            5 => Tab::Tribes,
             _ => Tab::Map,
         }
     }
 
     pub fn next(self) -> Self {
-        Self::from_index((self.index() + 1) % 5)
+        Self::from_index((self.index() + 1) % 7)
     }
 
     pub fn prev(self) -> Self {
-        Self::from_index((self.index() + 4) % 5)
+        Self::from_index((self.index() + 6) % 7)
     }
 }

@@ -1,21 +1,22 @@
 use std::fs;
 use std::path::Path;
 
-use crate::error::{SaveError, Result};
-use crate::raw::header::{Header, HEADER_SIZE};
-use crate::raw::player::{Player, PLAYER_SIZE, PLAYER_COUNT, read_players, write_players};
-use crate::raw::colony::{Colony, COLONY_SIZE};
-use crate::raw::unit::{Unit, UNIT_SIZE};
-use crate::raw::nation::{Nation, NATION_COUNT};
-use crate::raw::tribe::{Tribe, TRIBE_SIZE};
-use crate::raw::indian::{Indian, INDIAN_COUNT};
+use crate::error::{Result, SaveError};
+use crate::raw::colony::{COLONY_SIZE, Colony};
+use crate::raw::header::{HEADER_SIZE, Header};
+use crate::raw::indian::{INDIAN_COUNT, Indian};
+use crate::raw::maps::{Connectivity, MapLayer};
+use crate::raw::nation::{NATION_COUNT, Nation};
+use crate::raw::player::{PLAYER_COUNT, PLAYER_SIZE, Player, read_players, write_players};
 use crate::raw::stuff::Stuff;
-use crate::raw::maps::{MapLayer, Connectivity};
-use crate::raw::trade_route::{TradeRoute, TRADE_ROUTE_COUNT};
+use crate::raw::trade_route::{TRADE_ROUTE_COUNT, TradeRoute};
+use crate::raw::tribe::{TRIBE_SIZE, Tribe};
+use crate::raw::unit::{UNIT_SIZE, Unit};
 
 /// Size of the "OTHER" section between PLAYER and COLONY.
 /// From JSON: unknown51a (18 bytes) + click_before_open_colony x,y (2×2=4 bytes)
 ///   + unknown51b (2 bytes) = 24 bytes.
+///
 /// NOTE: Prior notes said 22 bytes. We determine the true size empirically
 /// by storing the raw bytes and verifying round-trip.
 const OTHER_SIZE: usize = 24;
@@ -30,7 +31,7 @@ const TAIL_FIXED_SIZE: usize = 74;
 pub struct SaveFile {
     pub header: Header,
     pub players: Vec<Player>,
-    pub other: Vec<u8>,          // raw OTHER section (24 bytes)
+    pub other: Vec<u8>, // raw OTHER section (24 bytes)
     pub colonies: Vec<Colony>,
     pub units: Vec<Unit>,
     pub nations: Vec<Nation>,
@@ -42,9 +43,9 @@ pub struct SaveFile {
     pub path_map: MapLayer,
     pub seen_map: MapLayer,
     pub connectivity: Connectivity,
-    pub tail_fixed: Vec<u8>,     // 74 bytes of trailing fields before trade routes
+    pub tail_fixed: Vec<u8>, // 74 bytes of trailing fields before trade routes
     pub trade_routes: Vec<TradeRoute>,
-    pub trailing: Vec<u8>,       // any bytes after trade routes (should be empty)
+    pub trailing: Vec<u8>, // any bytes after trade routes (should be empty)
 }
 
 impl SaveFile {
@@ -364,7 +365,10 @@ mod tests {
                     if a != b {
                         panic!(
                             "{}: byte mismatch at offset 0x{:04X}: original=0x{:02X}, written=0x{:02X}",
-                            path.display(), i, a, b
+                            path.display(),
+                            i,
+                            a,
+                            b
                         );
                     }
                 }
