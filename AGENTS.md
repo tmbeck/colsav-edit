@@ -1,14 +1,14 @@
-# AGENTS.md — Colonization SAV File Tools
+# AGENTS.md — Colonization SAV File Editor
 
 ## Project Overview
 
-Python toolkit for reading, editing, and analyzing Colonization 3.0 save game files (.SAV).
-The `colonization` package parses binary SAV file structures (header, colonies, units, powers,
-villages, maps, trade routes) into Python objects. CLI scripts dump or modify game data.
+Rust workspace for reading, editing, and analyzing Sid Meier's Colonization (1994 DOS) save game
+files (.SAV). Two crates: `colonization-sav` (library — parsing, serialization, round-trip) and
+`colsav` (binary — CLI subcommands + retro DOS-style TUI editor using ratatui).
 
-**Python version:** 3.6+ (uses f-strings, `int.from_bytes`; no type hints, no async).
-**No external dependencies.** Standard library only (`os`, `sys`, `argparse`, `binascii`, `string`).
-**No package manager config** — no `setup.py`, `pyproject.toml`, `requirements.txt`, or `Pipfile`.
+**Rust edition:** 2024  
+**MSRV:** latest stable (uses edition 2024 features).  
+**Dependencies:** thiserror 2, clap 4, anyhow 1, ratatui 0.29, crossterm 0.28.  
 **License:** Unlicense (public domain).
 
 ---
@@ -16,159 +16,319 @@ villages, maps, trade routes) into Python objects. CLI scripts dump or modify ga
 ## Repository Structure
 
 ```
-colonization/           # Core library package
-  __init__.py           # Re-exports: Map, Tile, Unit, Colonist, TradeRoute, Destination,
-                        #   Village, Colony, Power, SaveFileWriter, SaveFile, Header
-  header.py             # SaveFile, SaveFileWriter, Header — file I/O and offset computation
-  buildings.py          # Colony, Village, OldColony (legacy) — colony/village parsing
-  units.py              # Unit, Colonist — unit parsing and cargo decoding
-  powers.py             # Power — gold, taxes, serialization
-  map.py                # Map, Tile — terrain map parsing and ASCII rendering
-  trade.py              # TradeRoute, Destination — trade route parsing
-colmapplotter.py        # CLI: display map views from a SAV file
-dump_colonies.py        # CLI: dump colony data
-dump_powers.py          # CLI: dump power data
-dump_units.py           # CLI: dump unit data
-hex_compare.py          # CLI: compare hex diffs between two SAV files
-edit.py                 # CLI: modify power gold/taxes and write new SAV file
-ALLTERRA.MP             # Sample map file for testing
-Format.md               # Binary format documentation for the SAV file structure
+Cargo.toml                      # Workspace root — members, lint config
+Makefile                        # Build/test/lint/install targets
+
+colonization-sav/               # Library crate — SAV format parser
+  Cargo.toml
+  src/
+    lib.rs                      # Re-exports: SaveFile, SaveError, Goods16, enums::*
+    error.rs                    # SaveError enum (InvalidMagic, UnexpectedEof, InvalidSize, Io, Other)
+    savefile.rs                 # SaveFile — from_path/from_bytes/to_bytes/save, section layout
+    enums.rs                    # sav_enum! macro + ~20 enums (TerrainType, UnitType, etc.)
+    goods.rs                    # Goods16<T> — generic 16-element array for cargo/prices
+    bits.rs                     # BitReader/BitWriter — MSB-first bit-level I/O
+    display.rs                  # Display impls for Header, Unit, Colony, Nation, Player
+    raw/
+      mod.rs                    # Re-exports all raw types
+      header.rs                 # Header (390 bytes), GameOptions, ColonyReportOptions, EventFlags
+      player.rs                 # Player (52 bytes)
+      colony.rs                 # Colony (202 bytes), Buildings bit-struct
+      unit.rs                   # Unit (28 bytes)
+      nation.rs                 # Nation (316 bytes), FoundingFathers, Relation, NationTrade
+      tribe.rs                  # Tribe (18 bytes), TribeBLCS, TribeMission
+      indian.rs                 # Indian (78 bytes), TribeFlags
+      trade_route.rs            # TradeRoute (74 bytes), TradeRouteStop
+      stuff.rs                  # Stuff (727 bytes), ForeignAffairsReport, NationUnitCounts, TribeDataBlock
+      maps.rs                   # MapLayer, Connectivity, TileMap/MaskMap/PathMap/SeenMap type aliases
+
+colsav/                         # Binary crate — CLI + TUI
+  Cargo.toml
+  src/
+    main.rs                     # CLI with clap: info, dump-units, dump-colonies, dump-nations,
+                                #   dump-map, edit, tui
+    tui/
+      mod.rs                    # TUI module root, run_tui entry point
+      app.rs                    # App struct, event loop, tab/editing state machine
+      theme.rs                  # DOS retro blue/cyan theme colors
+      tabs.rs                   # Tab enum (Header, Colonies, Units, Nations, TradeRoutes, Tribes, Map)
+      header_tab.rs             # Header tab renderer
+      colonies_tab.rs           # Colonies tab renderer
+      units_tab.rs              # Units tab renderer
+      nations_tab.rs            # Nations tab renderer
+      map_tab.rs                # Map tab renderer (ASCII terrain)
+      trade_routes_tab.rs       # Trade Routes tab renderer
+      tribes_tab.rs             # Tribes & Indians tab renderer
+
+colonization/                   # Legacy Python package (original codebase, kept for reference)
+docs/
+  gemini.md                     # User-added docs (INACCURATE — see Key Warnings)
+saves/                          # 10 test SAV files (COLONY01.SAV – COLONY10.SAV)
+Format.md                       # Original binary format documentation
+ALLTERRA.MP                     # Sample map file for testing
+*.py                            # Legacy Python CLI scripts (kept for reference)
+colsav/
+  tests/
+    cli.rs                      # CLI integration tests (10 tests)
 ```
 
 ---
 
 ## Build / Run / Test Commands
 
-There is **no build system, no test suite, no linter, and no formatter** configured.
-
-### Running scripts
-
-All CLI scripts accept `-f FILE` or `-d DIRECTORY -s SLOT`:
+### Prerequisites
 
 ```bash
-# Dump units from a specific file
-python3 dump_units.py -f /path/to/COLONY00.SAV
+# Ensure Rust toolchain is available
+. "$HOME/.cargo/env"
+```
 
-# Dump colonies from slot 0 in a directory
-python3 dump_colonies.py -d /path/to/saves/ -s 0
+### Makefile targets (preferred)
 
-# Dump powers
-python3 dump_powers.py -f /path/to/COLONY00.SAV
+```bash
+make all              # fmt-check + clippy + test (full CI check)
+make build            # cargo build --workspace (debug)
+make check            # cargo check --workspace (type-check only, faster)
+make test             # cargo test --workspace (53 tests)
+make test-one T=name  # run a single test by name
+make test-lib         # tests for colonization-sav only
+make test-bin         # tests for colsav only
+make fmt              # cargo fmt --all (apply formatting)
+make fmt-check        # cargo fmt --all -- --check (CI mode)
+make clippy           # cargo clippy --workspace (uses workspace lint config)
+make clippy-strict    # cargo clippy --workspace -- -D warnings
+make clean            # cargo clean
+make release          # cargo build --release -p colsav
+make install          # cargo install --path colsav
+make tui              # run TUI with saves/COLONY01.SAV
+make info             # dump info from saves/COLONY01.SAV
+```
 
-# Display map
-python3 colmapplotter.py -f /path/to/COLONY00.SAV
+### Direct cargo commands
 
-# Compare two save files (by slot number, requires -d)
-python3 hex_compare.py -d /path/to/saves/ 0 1
+```bash
+cargo test --workspace                     # all 53 tests
+cargo test --workspace -- round_trip       # filter by test name
+cargo test -p colonization-sav             # library tests only
+cargo clippy --workspace                   # lint (0 warnings expected)
+cargo fmt --all -- --check                 # formatting check
+```
 
-# Edit a power's gold (requires -o output, -p power index 0-3)
-python3 edit.py -f /path/to/COLONY00.SAV -o output.SAV -p 0 -g 500000
+### CLI usage
+
+```bash
+# All subcommands take -f <FILE>
+colsav info -f saves/COLONY01.SAV
+colsav dump-units -f saves/COLONY01.SAV
+colsav dump-colonies -f saves/COLONY01.SAV
+colsav dump-nations -f saves/COLONY01.SAV
+colsav dump-map -f saves/COLONY01.SAV
+colsav edit -f input.SAV -o output.SAV -p 0 -g 500000    # set gold for power 0
+colsav edit -f input.SAV -o output.SAV -p 0 -t 10         # set tax for power 0
+colsav tui -f saves/COLONY01.SAV                           # launch TUI editor
+
+# During development (without installing):
+cargo run -p colsav -- info -f saves/COLONY01.SAV
+cargo run -p colsav -- tui -f saves/COLONY01.SAV
 ```
 
 ### Using the library
 
-```python
-import colonization as col
+```rust
+use colonization_sav::SaveFile;
 
-save = col.SaveFile("/path/to/COLONY00.SAV")
-print(save.header.colony_count)
-for unit in save.units:
-    print(unit)
-for colony in save.colonies:
-    print(colony)
-```
-
-### Quick validation (no formal tests)
-
-```bash
-# Syntax check all Python files
-python3 -m py_compile colonization/__init__.py
-python3 -m py_compile colonization/header.py
-python3 -m py_compile colonization/buildings.py
-python3 -m py_compile colonization/units.py
-python3 -m py_compile colonization/powers.py
-python3 -m py_compile colonization/map.py
-python3 -m py_compile colonization/trade.py
-
-# Or check all at once
-python3 -m py_compile edit.py dump_units.py dump_colonies.py dump_powers.py colmapplotter.py hex_compare.py
+let save = SaveFile::from_path("saves/COLONY01.SAV")?;
+println!("Colonies: {}", save.header.colony_count);
+for unit in &save.units {
+    println!("{unit}");
+}
+// Round-trip: re-serialize to bytes
+let bytes = save.to_bytes();
+save.save("output.SAV")?;
 ```
 
 ---
 
 ## Code Style Guidelines
 
-### Imports
+### Workspace Lint Configuration
 
-- Standard library first (`os`, `sys`, `argparse`), then blank line, then `import colonization as col`.
-- Inside the `colonization` package, use relative imports: `from .units import Colonist, Unit`.
-- The `__init__.py` re-exports all public classes — external code uses `import colonization as col`
-  and accesses `col.SaveFile`, `col.Unit`, etc.
-- `colonization` aliased as `col` in scripts and internally in `header.py`.
+Lints are configured at the workspace level in the root `Cargo.toml`:
+
+- `clippy::all` + `clippy::pedantic` at warn level
+- `unsafe_code` = forbid
+- Specific pedantic lints allowed (cast truncation/sign/wrap/lossless, module_name_repetitions,
+  missing_errors_doc, missing_panics_doc, must_use_candidate, struct_excessive_bools,
+  too_many_lines, wildcard_imports, similar_names, doc_markdown, match_same_arms,
+  needless_pass_by_value, unnested_or_patterns, unreadable_literal, return_self_not_must_use,
+  items_after_statements)
+
+Both crates inherit with `[lints] workspace = true`.
+
+### Module Organization
+
+- Library crate (`colonization-sav`) re-exports key types from `lib.rs`:
+  `SaveFile`, `SaveError`, `Goods16`, and all enums via `pub use enums::*`.
+- Raw binary structs live under `src/raw/` — one module per SAV section.
+- `raw/mod.rs` re-exports all raw types for convenience.
+- Binary crate (`colsav`) imports as `colonization_sav::...` and has its own `tui/` module tree.
 
 ### Naming Conventions
 
-- **Classes:** PascalCase — `SaveFile`, `TradeRoute`, `Colony`, `Unit`, `Power`.
-- **Functions/methods:** snake_case — `check_args`, `dump_units`, `display_map`.
-- **Private methods:** double-underscore prefix (name mangling) — `__parse`, `__reader`.
-- **Constants:** ALL_CAPS for module-level — `TERRAIN = 0`.
-- **Class attributes:** snake_case — `byte_length`, `base_offset`, `gold_min`.
-- **Lookup dicts:** named by category — `orders`, `powers`, `supplies`, `forms`, `buildings`.
-- **Files:** snake_case for scripts, singular nouns for modules (`units.py`, not `unit.py`).
+- **Types:** PascalCase — `SaveFile`, `TradeRoute`, `Colony`, `Unit`, `Nation`, `Goods16`.
+- **Functions/methods:** snake_case — `from_path`, `from_bytes`, `to_bytes`, `read_bits`.
+- **Constants:** SCREAMING_SNAKE_CASE — `HEADER_SIZE`, `COLONY_SIZE`, `UNIT_SIZE`, `FOOD`.
+- **Enums:** PascalCase type + PascalCase variants — `TerrainType::Prairie`, `UnitType::Colonist`.
+- **Modules:** snake_case, singular — `colony.rs`, `unit.rs`, `trade_route.rs`.
+- **Type aliases:** PascalCase — `TileMap`, `MaskMap`, `PathMap`, `SeenMap`.
 
 ### Formatting
 
-- 4-space indentation, no tabs.
-- No formatter or linter configured — follow existing file style.
-- Hex constants: lowercase `0x` prefix for addresses (`0x186`), uppercase `0X` sometimes for
-  building/constructable offsets (inconsistent — prefer lowercase `0x`).
-- f-strings for all string formatting (no `.format()` except in `__str__` methods where
-  `.ljust()` / `.rjust()` alignment is needed).
-- Trailing whitespace exists in some files — not enforced.
+- `rustfmt` with default settings — run `cargo fmt --all` before committing.
+- 4-space indentation (rustfmt default).
+- No custom `rustfmt.toml` — standard Rust formatting.
 
-### Type Handling
+### Type Handling & Binary Patterns
 
-- **No type hints** anywhere. This is a Python 3.6-era codebase.
-- Do not add type hints unless explicitly asked.
-- Binary data handled as `bytes` (read) and `bytearray` (write/modify).
-- Integer parsing: `int.from_bytes(data[start:end], 'little')` — all values are little-endian.
-- Reverse lookups: `{val: key for key, val in SomeClass.dict.items()}` pattern used heavily.
+- **No type hints era — this is fully typed Rust.** All structs have explicit types.
+- Binary data: `&[u8]` for input, `Vec<u8>` for output.
+- Integer parsing: `u16::from_le_bytes`, `i32::from_le_bytes`, etc. — all SAV values are little-endian.
+- Bit-level parsing: `BitReader`/`BitWriter` in `bits.rs` — MSB-first within each byte.
+- Unknown/reserved fields: stored as raw `[u8; N]` arrays or `Vec<u8>` for round-trip fidelity.
+- Name fields: stored as `[u8; N]` (not `String`) with `name() -> String` helper methods,
+  because names can contain embedded nulls.
+- Enum conversions: `sav_enum!` macro generates `TryFrom<u8>` (returns `Err(u8)` for unknown)
+  and `From<Enum> for u8`.
+- Generic goods arrays: `Goods16<T>` wraps `[T; 16]` with typed index access by goods constant.
 
 ### Error Handling
 
-- `ValueError` for invalid data lengths, out-of-range values, invalid arguments.
-- `FileNotFoundError` for missing files/directories.
-- `FileExistsError` for refusing to overwrite (in `SaveFile.save_data`).
-- `Exception` with descriptive message for unrecognized file types.
-- CLI scripts: wrap `check_args()` in try/except, print error, `sys.exit(1)`.
-- Some classes raise bare `ValueError` (no message) on length mismatch — this is existing style.
+- Library crate: `SaveError` enum via `thiserror` — `InvalidMagic`, `UnexpectedEof`,
+  `InvalidSize`, `Io`, `Other`.
+- Library returns `crate::error::Result<T>` (type alias for `std::result::Result<T, SaveError>`).
+- Binary crate: `anyhow::Result` for CLI error handling.
+- Panics: only in `BitReader`/`BitWriter` assertions and `sav_enum!` TryFrom for truly
+  impossible states. Production parsing uses `Result`.
 
-### Class Patterns
+### Struct Patterns
 
-- Game data classes use class-level `byte_length` for struct size.
-- Lookup dicts are class-level constants: `powers`, `supplies`, `orders`, `forms`, `buildings`.
-- Unknown byte ranges tracked as `unknowns` list of `(start, end)` tuples.
-- `__str__` methods produce multi-line human-readable dumps.
-- `unpack(data)` / `__init__(data)` for deserialization; `serialize()` / `pack()` for writing back.
-- `OldColony` in `buildings.py` is a legacy version of `Colony` — uses `unpack()` instead of
-  `__init__` for parsing. New code should follow `Colony`'s pattern (parse in `__init__`).
+- Raw structs use `from_bytes(&[u8]) -> Self` for deserialization, `to_bytes() -> Vec<u8>`
+  for serialization.
+- Each raw struct has a size constant: `HEADER_SIZE`, `COLONY_SIZE`, `UNIT_SIZE`, etc.
+  Some use `byte_size()` const fn instead.
+- Bit-structs (GameOptions, Buildings, FoundingFathers, etc.) use `BitReader`/`BitWriter`
+  for sub-byte field packing.
+- All unused/unknown bit-fields are stored as raw values (not skipped) for round-trip fidelity.
+- `Display` implementations produce multi-line human-readable dumps.
+- `SaveFile` is the top-level container — holds all parsed sections plus raw bytes for
+  unrecognized sections (`other`, `tail_fixed`, `trailing`).
 
-### Binary Format Notes
+---
 
-- SAV files start with `b'COLONIZE\0'` magic marker.
-- All multi-byte integers are little-endian.
-- Strings are 24-byte null-terminated ASCII.
-- Section offsets are computed dynamically from object counts in the header.
-- See `Format.md` for full binary structure documentation.
+## Testing
+
+### Test Coverage (53 tests)
+
+Tests are in-module `#[cfg(test)] mod tests` blocks within the library crate:
+
+- **Round-trip tests**: Parse real SAV files → serialize → compare bytes (all 10 save files).
+- **Raw parser round-trips**: Every module (header, colony, unit, nation, tribe, indian,
+  trade_route, stuff, maps, player) has parse→serialize→compare tests.
+- **Bit-struct round-trips**: GameOptions, ColonyReportOptions, EventFlags, Buildings,
+  FoundingFathers, Relation, TribeBLCS, TribeMission, TribeFlags.
+- **Enum conversions**: TryFrom valid/invalid values, NationId None handling, TerrainType
+  all values, HillsRiver all values.
+- **Goods module**: u8, u16, i16, i32, bool bitmap round-trips, indexing by constant.
+- **Error cases**: bad magic detection, short data handling.
+
+CLI integration tests are in `colsav/tests/cli.rs`:
+
+- **Subcommand success**: Each of info, dump-units, dump-colonies, dump-nations, dump-map
+  verified with exit code 0 and expected output fragments.
+- **Edit round-trips**: Gold edit, tax edit verified by loading output file and checking values.
+- **No-op edit**: Edit without -g/-t produces byte-identical output.
+- **Error cases**: Missing input file and invalid power index return non-zero exit.
+
+### Writing Tests
+
+- Place tests in `#[cfg(test)] mod tests { ... }` at the bottom of each module.
+- Use `use super::*;` to import the module's items.
+- For round-trip tests: read a real SAV file from `../saves/`, parse, serialize, assert byte equality.
+- Test names: `test_<thing>_<aspect>` — e.g., `test_unit_cargo_nibble_packing`.
+
+---
+
+## Key Architectural Decisions
+
+### Two-Layer Model
+
+Raw structs (`src/raw/`) hold the exact on-disk binary layout. No interpretation beyond
+byte extraction. This ensures byte-exact round-trip: `from_bytes(data).to_bytes() == data`.
+
+### Round-Trip Fidelity
+
+The core design constraint. Every unknown byte, every reserved bit-field, every trailing
+byte is preserved. The `SaveFile` struct stores `other`, `tail_fixed`, and `trailing` as
+raw `Vec<u8>` for sections not yet fully decoded.
+
+### Section Sizes (Verified Against Real Files)
+
+| Section       | Bytes | Count Source                    |
+|---------------|-------|--------------------------------|
+| Header block  | 390   | Fixed (header 158 + players 208 + other 24) |
+| Colony        | 202   | `header.colony_count`          |
+| Unit          | 28    | `header.unit_count`            |
+| Nation        | 316   | Fixed: 4                       |
+| Tribe         | 18    | `header.tribe_count`           |
+| Indian        | 78    | Fixed: 8                       |
+| Stuff         | 727   | Fixed: 1                       |
+| MapLayer      | W×H   | `header.map_width × header.map_height` |
+| Connectivity  | W     | `header.map_width`             |
+| Tail fixed    | 74    | Fixed                          |
+| TradeRoute    | 74    | Fixed: 12                      |
+
+### External Format References
+
+- **Primary**: `/tmp/smcol_saves_utility/smcol_sav_struct.json` (pavelbel's detailed JSON schema)
+- **Supplemental**: `/tmp/smcol_saves_utility/supplemental-info.md`
+- **In-repo**: `Format.md` (original binary format notes)
 
 ---
 
 ## Key Warnings
 
-- **No tests exist.** Validate changes manually against a real SAV file.
-- **Debug prints** are scattered through production code (`print()` in `SaveFile.__parse`,
-  `Power.serialize`). These are intentional for reverse-engineering work.
-- The `supplies` dict is duplicated across `Unit`, `Village`, `Colony`, and `TradeRoute`.
-  Keep them in sync if modifying supply mappings.
-- `header.py` has a bug: `self.villages_start_address` uses `Village.byte_length` instead of
-  `Power.byte_length` in the powers offset calculation. Be aware when working with addresses.
+- **`docs/gemini.md` is inaccurate.** It claims files are fixed 35,930 bytes (they're
+  variable-length), gives wrong offsets, and misidentifies section sizes. Use pavelbel's
+  JSON as the authoritative reference.
+- **Name fields contain embedded nulls** (e.g., `Vlad\x00el De Ruyter`). Always use
+  `[u8; N]` storage with `name()` helpers, never raw `String`.
+- **Bit order is MSB-first** within each byte (big-endian bit order), matching pavelbel's
+  JSON `bit_struct` convention. The `BitReader`/`BitWriter` in `bits.rs` handles this.
+- **Header block is 390 bytes total**: header fields (158) + players (4×52=208) + other (24).
+  These are packed contiguously, not separate sections.
+- **The `supplies` / goods mapping** (16 goods types) appears in `goods.rs`, `enums.rs`,
+  and across colony/unit/trade_route parsers. Keep them in sync.
+- **Legacy Python code** (`colonization/` package, `*.py` scripts) is kept for reference
+  but is not maintained. The Rust codebase is the active project.
+
+---
+
+## TUI Architecture
+
+The TUI uses ratatui 0.29 with crossterm 0.28 backend:
+
+- **Theme**: Authentic Norton Commander — VGA dark blue (`#0000AA`) background, cyan (`#00AAAA`) borders, light gray (`#AAAAAA`) text, yellow (`#FFFF55`) highlights. All colors use exact VGA 4-bit palette RGB values for consistent rendering across terminals.
+- **Tabs**: Header, Colonies, Units, Nations, Trade Routes, Tribes, Map (7 tabs,
+  switchable with Tab/Shift-Tab or number keys 1-7).
+- **Editing**: Inline editing for gold and tax fields (Enter to edit, type value, Enter to confirm).
+- **Saving**: `s` or `Ctrl+S` writes modified SAV file back to disk.
+- **Navigation**: Arrow keys/hjkl for list scrolling, `q`/`Esc` to quit.
+- **Help popup**: `?` key shows keybinding reference (dismiss with `?` or `Esc`).
+- **State machine**: `InputMode` enum (Normal, Editing) + `show_help` flag controls input handling.
+- **Unsaved changes**: Quit prompts for confirmation when dirty.
+
+### Current TUI Limitations
+
+- Colony detail view doesn't scroll for large colonies
+- Map viewport doesn't support panning/zooming
+- Trade routes and tribes are read-only (no inline editing yet)
