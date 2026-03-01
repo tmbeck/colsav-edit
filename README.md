@@ -1,4 +1,4 @@
-# Colonization-SAV-files
+# Colonization Saved Game Editor
 Colonization SAV file reader, editor, and tools.
 
 Based on the work by [nawagers](https://github.com/nawagers/Colonization-SAV-files).
